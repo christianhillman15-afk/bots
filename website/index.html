@@ -12,6 +12,11 @@
 </head>
 <body>
 
+  <!-- ===== FX LAYERS ===== -->
+  <div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
+  <div class="cursor-glow" id="cursorGlow" aria-hidden="true"></div>
+  <div class="noise" aria-hidden="true"></div>
+
   <!-- ===== NAV ===== -->
   <header class="nav" id="nav">
     <div class="container nav__inner">
@@ -38,6 +43,8 @@
     <div class="hero__glow hero__glow--1"></div>
     <div class="hero__glow hero__glow--2"></div>
     <div class="hero__glow hero__glow--3"></div>
+    <div class="hero__grid" aria-hidden="true"></div>
+    <canvas class="fx-canvas" id="fxCanvas" aria-hidden="true"></canvas>
     <div class="container hero__inner">
       <p class="eyebrow reveal">FOR PLUMBERS · HVAC · ELECTRICIANS · HOME-SERVICE PROS</p>
       <h1 class="hero__title reveal">

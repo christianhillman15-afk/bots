@@ -127,3 +127,114 @@
     });
   }
 })();
+
+/* =========================================================
+   FUTURISTIC FX
+   ========================================================= */
+(function () {
+  'use strict';
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var fine = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+  /* ---- Neon scroll-progress bar ---- */
+  var bar = document.getElementById('scrollProgress');
+  if (bar) {
+    var updBar = function () {
+      var h = document.documentElement;
+      var max = h.scrollHeight - h.clientHeight;
+      bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+    };
+    window.addEventListener('scroll', updBar, { passive: true });
+    window.addEventListener('resize', updBar);
+    updBar();
+  }
+
+  /* ---- Mouse-follow spotlight ---- */
+  var glow = document.getElementById('cursorGlow');
+  if (glow && fine && !reduce) {
+    var gx = innerWidth / 2, gy = innerHeight / 2, cx = gx, cy = gy, shown = false;
+    document.addEventListener('mousemove', function (e) {
+      gx = e.clientX; gy = e.clientY;
+      if (!shown) { glow.style.opacity = '1'; shown = true; }
+    });
+    document.addEventListener('mouseleave', function () { glow.style.opacity = '0'; shown = false; });
+    (function loop() {
+      cx += (gx - cx) * 0.15; cy += (gy - cy) * 0.15;
+      glow.style.transform = 'translate(' + cx + 'px,' + cy + 'px) translate(-50%,-50%)';
+      requestAnimationFrame(loop);
+    })();
+  } else if (glow) { glow.remove(); }
+
+  /* ---- 3D tilt on cards ---- */
+  if (fine && !reduce) {
+    document.querySelectorAll('.svc-card, .plan').forEach(function (card) {
+      card.addEventListener('mousemove', function (e) {
+        var r = card.getBoundingClientRect();
+        var px = (e.clientX - r.left) / r.width - 0.5;
+        var py = (e.clientY - r.top) / r.height - 0.5;
+        card.style.transform = 'perspective(820px) rotateX(' + (-py * 6).toFixed(2) + 'deg) rotateY(' + (px * 6).toFixed(2) + 'deg) translateY(-6px)';
+      });
+      card.addEventListener('mouseleave', function () { card.style.transform = ''; });
+    });
+  }
+
+  /* ---- Hero particle constellation ---- */
+  var canvas = document.getElementById('fxCanvas');
+  var hero = document.getElementById('top');
+  if (canvas && hero && !reduce) {
+    var ctx = canvas.getContext('2d');
+    var pts = [], W = 0, H = 0, raf = null;
+    var colors = ['rgba(91,140,255,', 'rgba(176,114,255,', 'rgba(255,93,118,'];
+    var LINK = 15000;
+    function init() {
+      var n = Math.min(80, Math.floor((W * H) / 15000));
+      pts = [];
+      for (var i = 0; i < n; i++) {
+        pts.push({
+          x: Math.random() * W, y: Math.random() * H,
+          vx: (Math.random() - 0.5) * 0.45, vy: (Math.random() - 0.5) * 0.45,
+          c: colors[i % colors.length]
+        });
+      }
+    }
+    function size() {
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = hero.offsetWidth; H = hero.offsetHeight;
+      canvas.width = W * dpr; canvas.height = H * dpr;
+      canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      init();
+    }
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      for (var i = 0; i < pts.length; i++) {
+        var p = pts[i];
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0 || p.x > W) p.vx *= -1;
+        if (p.y < 0 || p.y > H) p.vy *= -1;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 1.7, 0, Math.PI * 2);
+        ctx.fillStyle = p.c + '0.9)'; ctx.fill();
+        for (var j = i + 1; j < pts.length; j++) {
+          var q = pts[j], dx = p.x - q.x, dy = p.y - q.y, d = dx * dx + dy * dy;
+          if (d < LINK) {
+            ctx.strokeStyle = p.c + (0.5 * (1 - d / LINK)).toFixed(3) + ')';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+          }
+        }
+      }
+      raf = requestAnimationFrame(draw);
+    }
+    size();
+    draw();
+    window.addEventListener('resize', size);
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (en.isIntersecting) { if (!raf) draw(); }
+          else if (raf) { cancelAnimationFrame(raf); raf = null; }
+        });
+      }, { threshold: 0 }).observe(hero);
+    }
+  } else if (canvas) { canvas.remove(); }
+})();
