@@ -142,7 +142,7 @@
     var updBar = function () {
       var h = document.documentElement;
       var max = h.scrollHeight - h.clientHeight;
-      bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+      bar.style.transform = 'scaleX(' + (max > 0 ? h.scrollTop / max : 0) + ')';
     };
     window.addEventListener('scroll', updBar, { passive: true });
     window.addEventListener('resize', updBar);
@@ -174,7 +174,7 @@
     var colors = ['rgba(91,140,255,', 'rgba(176,114,255,', 'rgba(255,93,118,'];
     var LINK = 15000;
     function init() {
-      var n = Math.min(80, Math.floor((W * H) / 15000));
+      var n = Math.min(55, Math.floor((W * H) / 20000));
       pts = [];
       for (var i = 0; i < n; i++) {
         pts.push({
@@ -185,7 +185,7 @@
       }
     }
     function size() {
-      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
       W = hero.offsetWidth; H = hero.offsetHeight;
       canvas.width = W * dpr; canvas.height = H * dpr;
       canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
