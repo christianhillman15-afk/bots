@@ -38,7 +38,7 @@ export const usd = (n) =>
 /** Escape a value for CSV. */
 export function csvCell(v) {
   const s = v === null || v === undefined ? '' : String(v);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
 export function toCsv(rows, columns) {

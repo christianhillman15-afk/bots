@@ -34,7 +34,13 @@ function marketScore(metroPopulation = 0) {
 export function scoreLead(business, audit) {
   const reviews = business.reviewCount || 0;
   const rScore = reviewScore(reviews);
-  const ratingScore = business.rating ? clamp((business.rating - 2.5) / 2.5, 0, 1) : 0.4;
+  // Rating is a weak legitimacy signal for affordability. Treat it as
+  // positive-only (more stars = more established) with a neutral floor, so an
+  // unrated business never scores higher than a real, modestly-rated one.
+  const NEUTRAL_RATING = 0.5;
+  const ratingScore = business.rating
+    ? Math.max(clamp((business.rating - 2.5) / 2.5, 0, 1), NEUTRAL_RATING)
+    : NEUTRAL_RATING;
   const catAfford = clamp(business.affordability ?? 0.5, 0, 1);
   const market = marketScore(business.metroPopulation);
   const severity = clamp(audit.severity ?? 0, 0, 1);

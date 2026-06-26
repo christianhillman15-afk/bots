@@ -11,7 +11,7 @@ export const PRESENCE = {
   none: { label: 'No website at all', severity: 1.0 },
   social_only: { label: 'Social page only (no real site)', severity: 0.92 },
   broken: { label: 'Website broken / down / parked', severity: 0.88 },
-  weak: { label: 'Has a site, but it’s hurting them', severity: 0.45 },
+  weak: { label: 'Has a site, but it’s hurting them', severity: 0.45 }, // floor for unassessable sites
   ok: { label: 'Site is fine — not a fit', severity: 0.05 },
 };
 
@@ -32,7 +32,13 @@ export function finalizeAudit(presence, problems, { probe = null, pagespeed = nu
   else if (presence === 'social_only') severity = PRESENCE.social_only.severity;
   else if (presence === 'broken') severity = PRESENCE.broken.severity;
   else if (presence === 'ok') severity = PRESENCE.ok.severity;
-  else severity = severityFromProblems(problems);
+  else {
+    // weak: problem-driven, but a site we *couldn't* assess (robots.txt
+    // blocked) is still a valid lead, so floor it at the weak baseline
+    // instead of the near-zero a single minor problem would produce.
+    severity = severityFromProblems(problems);
+    if (probe?.robotsBlocked) severity = Math.max(severity, PRESENCE.weak.severity);
+  }
 
   let healthScore;
   if (pagespeed?.performance !== null && pagespeed?.performance !== undefined) {

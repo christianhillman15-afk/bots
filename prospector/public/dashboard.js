@@ -1,6 +1,8 @@
 const $ = (sel) => document.querySelector(sel);
 const usd = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('en-US');
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// Only allow http(s) URLs into href attributes — blocks javascript:/data: schemes.
+const safeUrl = (u) => (/^https?:\/\//i.test(String(u || '')) ? esc(u) : '');
 
 let META = {};
 const state = { tier: '', presence: '', state: '', category: '', sort: 'score', search: '' };
@@ -11,9 +13,9 @@ async function boot() {
   if (META.live) { badge.textContent = 'LIVE · Google Places'; badge.className = 'badge badge--live'; }
   else { badge.textContent = 'DEMO MODE'; badge.className = 'badge badge--demo'; $('#scanHint').textContent = 'Demo mode: realistic sample data. Add a Places API key in .env for real businesses.'; }
 
-  // populate category filter
+  // populate category filter (value = key, which matches business.category)
   for (const c of META.categories) {
-    const o = document.createElement('option'); o.value = c.label; o.textContent = c.label; $('#fCategory').appendChild(o);
+    const o = document.createElement('option'); o.value = c.key; o.textContent = c.label; $('#fCategory').appendChild(o);
   }
   wireFilters();
   $('#scanBtn').addEventListener('click', runScan);
@@ -95,9 +97,13 @@ function leadCard(l) {
   ).join('');
   const statusOpts = ['new', 'contacted', 'interested', 'won', 'dead']
     .map((o) => `<option ${((l.status || 'new') === o) ? 'selected' : ''}>${o}</option>`).join('');
+  const siteHref = safeUrl(b.website);
   const site = b.website
-    ? `<a href="${esc(b.website)}" target="_blank" rel="noopener">${esc(b.website)}</a>`
+    ? (siteHref
+        ? `<a href="${siteHref}" target="_blank" rel="noopener">${esc(b.website)}</a>`
+        : `<span>${esc(b.website)}</span>`)
     : '<span class="muted">none</span>';
+  const mapsHref = safeUrl(b.googleMapsUri);
   return `
   <div class="lead">
     <div class="lead__row">
@@ -126,7 +132,7 @@ function leadCard(l) {
           <div class="kv">📞 ${esc(b.phone || '—')}</div>
           <div class="kv">🌐 ${site}</div>
           <div class="kv">📍 ${esc(b.address || '')}</div>
-          ${b.googleMapsUri ? `<div class="kv"><a href="${esc(b.googleMapsUri)}" target="_blank" rel="noopener">View on Google Maps ↗</a></div>` : ''}
+          ${mapsHref ? `<div class="kv"><a href="${mapsHref}" target="_blank" rel="noopener">View on Google Maps ↗</a></div>` : ''}
           <h4 style="margin-top:14px">Score breakdown</h4>
           <div class="kv">Problem severity: <b>${s.breakdown.presence}</b> · Affordability: <b>${s.breakdown.affordability}</b> · Market: <b>${s.breakdown.market}</b></div>
           <h4 style="margin-top:14px">Suggested opener</h4>

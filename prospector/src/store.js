@@ -103,7 +103,10 @@ export class LeadStore {
     let rows = this.all().filter((l) => (l.score?.value ?? 0) >= minScore);
     if (state) rows = rows.filter((l) => l.business?.state === state);
     if (city) rows = rows.filter((l) => (l.business?.city || '').toLowerCase() === city.toLowerCase());
-    if (category) rows = rows.filter((l) => l.business?.category === category);
+    if (category)
+      rows = rows.filter(
+        (l) => l.business?.category === category || l.business?.categoryLabel === category
+      );
     if (status) rows = rows.filter((l) => (l.status || 'new') === status);
     if (presence) rows = rows.filter((l) => l.presence === presence);
     if (problem) rows = rows.filter((l) => (l.audit?.problems || []).some((p) => p.code === problem));
