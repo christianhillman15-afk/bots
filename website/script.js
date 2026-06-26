@@ -165,19 +165,6 @@
     })();
   } else if (glow) { glow.remove(); }
 
-  /* ---- 3D tilt on pricing cards only (service cards use a normal hover) ---- */
-  if (fine && !reduce) {
-    document.querySelectorAll('.plan').forEach(function (card) {
-      card.addEventListener('mousemove', function (e) {
-        var r = card.getBoundingClientRect();
-        var px = (e.clientX - r.left) / r.width - 0.5;
-        var py = (e.clientY - r.top) / r.height - 0.5;
-        card.style.transform = 'perspective(820px) rotateX(' + (-py * 6).toFixed(2) + 'deg) rotateY(' + (px * 6).toFixed(2) + 'deg) translateY(-6px)';
-      });
-      card.addEventListener('mouseleave', function () { card.style.transform = ''; });
-    });
-  }
-
   /* ---- Hero particle constellation ---- */
   var canvas = document.getElementById('fxCanvas');
   var hero = document.getElementById('top');

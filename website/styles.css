@@ -180,10 +180,11 @@ section { position: relative; padding: clamp(64px, 9vw, 120px) 0; }
   background: var(--offwhite); border: 1px solid var(--line-light); border-radius: var(--radius); padding: 32px 28px;
   transition: transform .3s var(--ease), box-shadow .3s, border-color .3s; position: relative; overflow: hidden;
 }
-.svc-card::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--grad-tri); transform: scaleX(0); transform-origin: left; transition: transform .35s var(--ease); }
-.svc-card:hover { transform: translateY(-8px); box-shadow: 0 30px 60px -28px rgba(20,20,60,0.35); border-color: transparent; }
-.svc-card:hover::before { transform: scaleX(1); }
-.svc-card__icon { width: 54px; height: 54px; border-radius: 14px; display: grid; place-items: center; margin-bottom: 20px; color: #fff; }
+.svc-card::before { content: ""; position: absolute; top: 0; left: -130%; width: 60%; height: 100%; z-index: 3; pointer-events: none; background: linear-gradient(120deg, transparent, rgba(110,130,255,0.35), transparent); transform: skewX(-20deg); transition: left .7s var(--ease); }
+.svc-card:hover { transform: translateY(-10px) scale(1.02); box-shadow: 0 34px 70px -24px rgba(91,61,255,0.45); border-color: transparent; }
+.svc-card:hover::before { left: 150%; }
+.svc-card:hover .svc-card__icon { transform: translateY(-4px) rotate(-6deg) scale(1.08); }
+.svc-card__icon { width: 54px; height: 54px; border-radius: 14px; display: grid; place-items: center; margin-bottom: 20px; color: #fff; transition: transform .4s var(--ease); }
 .svc-card__icon svg { width: 26px; height: 26px; }
 .icon-blue { background: linear-gradient(135deg, var(--blue), var(--blue-2)); box-shadow: 0 10px 24px -10px var(--blue); }
 .icon-purple { background: linear-gradient(135deg, var(--purple), var(--purple-2)); box-shadow: 0 10px 24px -10px var(--purple); }
@@ -211,14 +212,14 @@ section { position: relative; padding: clamp(64px, 9vw, 120px) 0; }
   position: relative; background: var(--ink-3); border: 1px solid var(--line); border-radius: 22px; padding: 36px 30px;
   transition: transform .35s var(--ease), box-shadow .35s, border-color .35s;
 }
-.plan:hover { transform: translateY(-8px); border-color: rgba(255,255,255,0.2); }
+.plan:hover { transform: translateY(-10px) scale(1.015); border-color: rgba(255,255,255,0.2); box-shadow: 0 36px 80px -30px rgba(91,61,255,0.55); }
 .plan--featured {
   background: linear-gradient(180deg, rgba(139,61,255,0.16), rgba(47,107,255,0.06)), var(--ink-3);
   border: 1px solid transparent; background-clip: padding-box;
   box-shadow: 0 0 0 1.5px var(--purple), 0 40px 80px -30px rgba(139,61,255,0.6);
   transform: scale(1.03);
 }
-.plan--featured:hover { transform: scale(1.03) translateY(-8px); }
+.plan--featured:hover { transform: scale(1.04) translateY(-10px); }
 .plan__badge {
   position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
   background: var(--grad-red); color: #fff; font-size: 12px; font-weight: 700; letter-spacing: 0.1em;
@@ -456,8 +457,15 @@ section { position: relative; padding: clamp(64px, 9vw, 120px) 0; }
   50% { box-shadow: 0 0 26px 0 rgba(91, 140, 255, 0.9); }
 }
 
-/* Tilt smoothing */
-.plan { transform-style: preserve-3d; }
+/* Neon hover border on the standard plans (featured has a permanent one) */
+.plan:not(.plan--featured)::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; z-index: 2; pointer-events: none;
+  background: conic-gradient(from var(--angle), transparent 55%, var(--blue), var(--purple), var(--red), transparent);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: 0; transition: opacity .35s; animation: angleSpin 4s linear infinite; animation-play-state: paused;
+}
+.plan:not(.plan--featured):hover::after { opacity: 1; animation-play-state: running; }
 
 @media (prefers-reduced-motion: reduce) {
   .cursor-glow, .noise, .hero__grid, .fx-canvas { display: none !important; }
