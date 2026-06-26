@@ -165,9 +165,9 @@
     })();
   } else if (glow) { glow.remove(); }
 
-  /* ---- 3D tilt on cards ---- */
+  /* ---- 3D tilt on pricing cards only (service cards use a normal hover) ---- */
   if (fine && !reduce) {
-    document.querySelectorAll('.svc-card, .plan').forEach(function (card) {
+    document.querySelectorAll('.plan').forEach(function (card) {
       card.addEventListener('mousemove', function (e) {
         var r = card.getBoundingClientRect();
         var px = (e.clientX - r.left) / r.width - 0.5;

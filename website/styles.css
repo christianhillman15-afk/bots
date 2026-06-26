@@ -457,7 +457,7 @@ section { position: relative; padding: clamp(64px, 9vw, 120px) 0; }
 }
 
 /* Tilt smoothing */
-.svc-card, .plan { transform-style: preserve-3d; }
+.plan { transform-style: preserve-3d; }
 
 @media (prefers-reduced-motion: reduce) {
   .cursor-glow, .noise, .hero__grid, .fx-canvas { display: none !important; }
