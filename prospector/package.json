@@ -1,0 +1,26 @@
+{
+  "name": "surge-prospector",
+  "version": "1.0.0",
+  "description": "Finds US businesses with no website (or a broken/bad one) that look established enough to afford SURGE — a lead-finding engine for the website + SEO retainer agency.",
+  "type": "module",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "bin": {
+    "prospector": "bin/prospector.js"
+  },
+  "scripts": {
+    "scan": "node bin/prospector.js scan",
+    "list": "node bin/prospector.js list",
+    "export": "node bin/prospector.js export",
+    "stats": "node bin/prospector.js stats",
+    "serve": "node bin/prospector.js serve",
+    "start": "node bin/prospector.js serve"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}

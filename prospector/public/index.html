@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SURGE Prospector — Lead Finder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand__mark">⚡</span>
+      <span class="brand__text">SUR<span class="accent">GE</span></span>
+      <span class="brand__sub">Prospector</span>
+    </div>
+    <div class="topbar__right">
+      <span id="modeBadge" class="badge badge--demo">DEMO</span>
+      <button id="exportBtn" class="btn btn--ghost">⬇ Export CSV</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- Stats -->
+    <section class="stats" id="stats"></section>
+
+    <!-- Scan panel -->
+    <section class="panel scanpanel">
+      <div class="scanpanel__head">
+        <h2>Run a hunt</h2>
+        <p id="scanHint" class="muted">Find businesses with no/bad websites that can afford SURGE.</p>
+      </div>
+      <div class="scanpanel__controls">
+        <label>Metros
+          <select id="scanCities">
+            <option value="3">Top 3</option>
+            <option value="5" selected>Top 5</option>
+            <option value="10">Top 10</option>
+            <option value="25">Top 25</option>
+            <option value="50">Top 50</option>
+            <option value="75">All 75</option>
+          </select>
+        </label>
+        <label>Categories
+          <select id="scanCats">
+            <option value="default" selected>Best fits (premium + high)</option>
+            <option value="all">All categories</option>
+          </select>
+        </label>
+        <label>Per city
+          <select id="scanMax">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="40">40</option>
+            <option value="60">60</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="scanFull" /> Deep audit (PageSpeed)</label>
+        <button id="scanBtn" class="btn btn--red">⚡ Run Scan</button>
+      </div>
+      <div id="scanStatus" class="scanstatus" hidden></div>
+    </section>
+
+    <!-- Filters -->
+    <section class="filters">
+      <input type="search" id="fSearch" placeholder="Search name, city, website…" />
+      <select id="fTier"><option value="">All tiers</option><option value="hot">🔥 Hot</option><option value="warm">🟠 Warm</option><option value="cool">🔵 Cool</option><option value="cold">⚪ Cold</option></select>
+      <select id="fPresence"><option value="">Any problem</option><option value="none">No website</option><option value="social_only">Social-only</option><option value="broken">Broken/parked</option><option value="weak">Weak site</option></select>
+      <select id="fState"><option value="">All states</option></select>
+      <select id="fCategory"><option value="">All categories</option></select>
+      <select id="fSort"><option value="score">Sort: Score</option><option value="opportunity">Sort: Opportunity $</option><option value="reviews">Sort: Reviews</option><option value="recent">Sort: Newest</option></select>
+      <span class="filters__count" id="resultCount"></span>
+    </section>
+
+    <!-- Leads -->
+    <section class="leads" id="leads"></section>
+  </main>
+
+  <div class="footnote muted">
+    Surfaces publicly available business info for legitimate B2B prospecting. You are responsible for CAN-SPAM / TCPA / state compliance and honoring opt-outs. Not legal advice. See README.
+  </div>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>
