@@ -76,17 +76,22 @@ Want it running 24/7 so you (and your team) can use it from any device? Host it.
 `DASHBOARD_PASSWORD`** first — otherwise anyone with the URL could view your leads and burn your API
 budget.
 
-### Easiest: Render (no install, click-through)
+### Easiest: Render (no install)
 
-1. The repo is already on GitHub. Go to **[dashboard.render.com](https://dashboard.render.com)** →
-   **New → Blueprint** → pick this repo. Render reads `prospector/render.yaml`.
-2. When prompted, paste your **`GOOGLE_PLACES_API_KEY`** and choose a **`DASHBOARD_PASSWORD`**. Click **Apply**.
-3. Open the URL Render gives you (e.g. `https://surge-prospector.onrender.com`), log in with
+Create the service manually — it works from any branch (no need to merge first):
+
+1. Go to **[dashboard.render.com](https://dashboard.render.com)** → **New → Web Service** → connect this repo.
+2. Set: **Branch** = `claude/website-audit-service-0xwokm` (or your merged branch) ·
+   **Root Directory** = `prospector` · **Build Command** = `npm install` · **Start Command** = `npm start`.
+3. **Environment** → add `GOOGLE_PLACES_API_KEY` (your key) and `DASHBOARD_PASSWORD` (pick a strong one).
+4. **Health Check Path** = `/healthz`. Create the service.
+5. Open the URL Render gives you (e.g. `https://surge-prospector.onrender.com`), log in with
    user `surge` + your password, and run a scan.
 
-The blueprint includes a 1 GB persistent disk so your leads and outreach statuses survive restarts.
-To run on Render's **free tier** instead, delete the `disk:` block and `DATA_DIR` from `render.yaml`
-(leads then reset on restart — just re-scan or export CSVs to keep them).
+To keep leads/statuses across restarts, add a **Disk** (Advanced → Add Disk), mount path `/data`,
+and set env `DATA_DIR=/data` — this requires a paid instance. On the **free tier** (no disk) the tool
+still works; leads just reset on restart, so re-scan or export CSVs to keep them. `render.yaml` in this
+folder documents all these settings for reference.
 
 ### Anywhere else: Docker
 

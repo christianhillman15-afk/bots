@@ -1,11 +1,16 @@
-# Render Blueprint — one-click deploy of the SURGE Prospector dashboard.
+# Reference deploy settings for the SURGE Prospector dashboard on Render.
 #
-# How to use:
-#   1. Push this repo to GitHub (already done).
-#   2. In Render (https://dashboard.render.com) → New → Blueprint → pick this repo.
-#   3. Render reads this file. When prompted, paste your GOOGLE_PLACES_API_KEY
-#      and choose a DASHBOARD_PASSWORD. Click Apply.
-#   4. Open the URL Render gives you, log in, and run a scan.
+# Render's Blueprint auto-detection only reads render.yaml from the repo's
+# DEFAULT branch at the repo ROOT, so on this feature branch the most reliable
+# path is to create the service MANUALLY using these exact values:
+#   New → Web Service → connect repo
+#   Branch        = claude/website-audit-service-0xwokm
+#   Root Directory = prospector
+#   Build Command  = npm install
+#   Start Command  = npm start
+#   Health Check   = /healthz
+#   Env vars       = GOOGLE_PLACES_API_KEY, DASHBOARD_PASSWORD (+ the rest below)
+# (If you later merge this to your default branch, New → Blueprint will pick it up.)
 #
 # Notes:
 #   - rootDir points Render at the prospector/ subfolder.
