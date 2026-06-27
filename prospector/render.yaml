@@ -1,0 +1,42 @@
+# Render Blueprint — one-click deploy of the SURGE Prospector dashboard.
+#
+# How to use:
+#   1. Push this repo to GitHub (already done).
+#   2. In Render (https://dashboard.render.com) → New → Blueprint → pick this repo.
+#   3. Render reads this file. When prompted, paste your GOOGLE_PLACES_API_KEY
+#      and choose a DASHBOARD_PASSWORD. Click Apply.
+#   4. Open the URL Render gives you, log in, and run a scan.
+#
+# Notes:
+#   - rootDir points Render at the prospector/ subfolder.
+#   - The disk keeps your leads + statuses across restarts/redeploys.
+#     A disk requires a paid instance type. To run on the FREE tier instead,
+#     delete the `disk:` block and the DATA_DIR var (leads then reset on restart —
+#     just re-scan, or export CSVs to keep them).
+services:
+  - type: web
+    name: surge-prospector
+    runtime: node
+    rootDir: prospector
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: GOOGLE_PLACES_API_KEY
+        sync: false # prompted at deploy; not stored in git
+      - key: PAGESPEED_API_KEY
+        sync: false
+      - key: DASHBOARD_PASSWORD
+        sync: false # prompted at deploy; choose a strong one
+      - key: DASHBOARD_USER
+        value: surge
+      - key: AUDIT_MODE
+        value: light
+      - key: DATA_DIR
+        value: /data
+    disk:
+      name: prospector-data
+      mountPath: /data
+      sizeGB: 1

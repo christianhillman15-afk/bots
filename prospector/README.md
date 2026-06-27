@@ -44,6 +44,9 @@ npm run scan -- --cities 10 --categories all --max 15
 npm run serve         # → http://localhost:4317
 ```
 
+> On Mac/Linux you can also just run `./start.sh` — it installs deps, creates `.env`, and starts the
+> dashboard in one step.
+
 Demo mode generates **realistic sample businesses** (the same distribution you'd find on Google
 Maps — lots with no site, social-only pages, broken domains, weak builder sites) so you can see the
 entire pipeline — search → audit → score → dashboard → CSV — before spending a cent.
@@ -64,6 +67,46 @@ entire pipeline — search → audit → score → dashboard → CSV — before 
    ```
 
 The badge in the dashboard flips to **LIVE · Google Places** automatically when a key is present.
+
+---
+
+## Deploy it online (always-on, shareable)
+
+Want it running 24/7 so you (and your team) can use it from any device? Host it. **Always set a
+`DASHBOARD_PASSWORD`** first — otherwise anyone with the URL could view your leads and burn your API
+budget.
+
+### Easiest: Render (no install, click-through)
+
+1. The repo is already on GitHub. Go to **[dashboard.render.com](https://dashboard.render.com)** →
+   **New → Blueprint** → pick this repo. Render reads `prospector/render.yaml`.
+2. When prompted, paste your **`GOOGLE_PLACES_API_KEY`** and choose a **`DASHBOARD_PASSWORD`**. Click **Apply**.
+3. Open the URL Render gives you (e.g. `https://surge-prospector.onrender.com`), log in with
+   user `surge` + your password, and run a scan.
+
+The blueprint includes a 1 GB persistent disk so your leads and outreach statuses survive restarts.
+To run on Render's **free tier** instead, delete the `disk:` block and `DATA_DIR` from `render.yaml`
+(leads then reset on restart — just re-scan or export CSVs to keep them).
+
+### Anywhere else: Docker
+
+A `Dockerfile` is included, so it runs on Railway, Fly.io, Google Cloud Run, or any VPS:
+
+```bash
+docker build -t surge-prospector ./prospector
+docker run -p 4317:4317 \
+  -e GOOGLE_PLACES_API_KEY=AIza... \
+  -e DASHBOARD_PASSWORD=choose-a-strong-one \
+  -v surge_data:/data \
+  surge-prospector
+```
+
+### Hosting checklist
+
+- ✅ `DASHBOARD_PASSWORD` set (login required)
+- ✅ `GOOGLE_PLACES_API_KEY` set (live data) and **restricted** in Google Cloud to the two APIs
+- ✅ `DATA_DIR` pointed at a persistent disk/volume if you want leads to survive restarts
+- ✅ Watch your Google Cloud billing/quota the first month
 
 ---
 

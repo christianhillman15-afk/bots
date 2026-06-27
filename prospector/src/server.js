@@ -1,4 +1,5 @@
 import express from 'express';
+import { timingSafeEqual } from 'node:crypto';
 import { config, isLive } from './config.js';
 import { LeadStore } from './store.js';
 import { runScan } from './scan.js';
@@ -8,13 +9,38 @@ import { CATEGORIES, findCategory, defaultCategories } from './data/categories.j
 import { toCsv } from './util.js';
 import { log } from './logger.js';
 
+/* Constant-time string compare to avoid leaking the password via timing. */
+function safeEqual(a, b) {
+  const ba = Buffer.from(String(a));
+  const bb = Buffer.from(String(b));
+  if (ba.length !== bb.length) return false;
+  return timingSafeEqual(ba, bb);
+}
+
+/* HTTP Basic Auth — only enforced when DASHBOARD_PASSWORD is configured. */
+function basicAuth(req, res, next) {
+  if (!config.dashboardPassword) return next(); // open in private/local use
+  const [scheme, encoded] = (req.headers.authorization || '').split(' ');
+  if (scheme === 'Basic' && encoded) {
+    const [user, pass] = Buffer.from(encoded, 'base64').toString().split(':');
+    if (safeEqual(user, config.dashboardUser) && safeEqual(pass, config.dashboardPassword)) {
+      return next();
+    }
+  }
+  res.set('WWW-Authenticate', 'Basic realm="SURGE Prospector"').status(401).send('Authentication required.');
+}
+
 export function startServer() {
   const app = express();
-  app.use(express.json());
-  app.use(express.static(config.publicDir));
-
   const store = new LeadStore();
   let scanning = false;
+
+  // Health check for hosting platforms — must stay public (before auth).
+  app.get('/healthz', (_req, res) => res.json({ ok: true, leads: store.size, live: isLive() }));
+
+  app.use(basicAuth); // everything below requires the password (if set)
+  app.use(express.json());
+  app.use(express.static(config.publicDir));
 
   // Metadata for the UI (filters, categories, metros, mode)
   app.get('/api/meta', (_req, res) => {
@@ -117,11 +143,14 @@ export function startServer() {
     res.send(toCsv(leads, cols));
   });
 
-  app.listen(config.port, () => {
+  // 0.0.0.0 so it's reachable when hosted (containers/PaaS), not just locally.
+  app.listen(config.port, '0.0.0.0', () => {
     log.title('SURGE PROSPECTOR — dashboard');
     log.ok(`http://localhost:${config.port}`);
     if (!isLive()) log.warn('DEMO MODE (no Places key). Scans use sample data.');
-    log.info(`${store.size} leads loaded.`);
+    if (config.dashboardPassword) log.ok(`Login required (user: ${config.dashboardUser}).`);
+    else log.warn('No DASHBOARD_PASSWORD set — dashboard is open. Set one before hosting publicly.');
+    log.info(`${store.size} leads loaded · data in ${config.dataDir}`);
   });
 }
 

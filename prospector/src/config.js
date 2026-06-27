@@ -17,9 +17,15 @@ export const config = {
     'SurgeProspectorBot/1.0 (+https://wearelaunchmedia.com; website quality audit)',
   auditConcurrency: Number(process.env.AUDIT_CONCURRENCY) || 6,
   auditTimeoutMs: Number(process.env.AUDIT_TIMEOUT_MS) || 12000,
-  dataDir: resolve(ROOT, 'data'),
+  // DATA_DIR lets a host mount a persistent disk so leads survive restarts.
+  dataDir: process.env.DATA_DIR ? resolve(process.env.DATA_DIR) : resolve(ROOT, 'data'),
   exportDir: resolve(ROOT, 'exports'),
   publicDir: resolve(ROOT, 'public'),
+  // Dashboard login. If DASHBOARD_PASSWORD is set, the dashboard requires it
+  // (use this whenever the tool is reachable over the internet). Unset = open
+  // (fine for running privately on your own machine).
+  dashboardUser: process.env.DASHBOARD_USER?.trim() || 'surge',
+  dashboardPassword: process.env.DASHBOARD_PASSWORD?.trim() || '',
 };
 
 /** True when we have a real Places key; otherwise we run on demo data. */
