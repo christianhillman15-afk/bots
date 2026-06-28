@@ -15,8 +15,9 @@ ENV DATA_DIR=/data
 RUN mkdir -p /data
 VOLUME ["/data"]
 
-# Hosts inject PORT; default to 4317 for local `docker run`.
-ENV PORT=4317
+# Hosts (DigitalOcean, Render, etc.) inject their own PORT at runtime, and the
+# app honors it (falling back to 4317 locally when PORT is unset). We do NOT pin
+# ENV PORT here so the host's port always wins and routing/health checks match.
 EXPOSE 4317
 
 CMD ["npm", "start"]
