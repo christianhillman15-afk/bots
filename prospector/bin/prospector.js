@@ -218,7 +218,9 @@ async function cmdVerifyWebsites(opts) {
     },
   });
   if (tty) process.stdout.write('\r'.padEnd(66) + '\r');
-  log.ok(`Done: ${res.foundSites} actually had sites (re-audited), ${res.removedOk} had fine sites (removed), ${res.confirmedNone} confirmed no website${res.remaining ? ` · ${res.remaining} left — run again` : ''}.`);
+  log.ok(`Done: ${res.foundSites} actually had sites (re-audited), ${res.removedOk} had fine sites (removed), ${res.confirmedNone} confirmed no website.`);
+  if (res.failed) log.warn(`${res.failed} were throttled/errored — run again to retry them (free tier rate-limits; that's normal).`);
+  if (res.remaining) log.info(`${res.remaining} leads still to check — run again.`);
 }
 
 // Re-score every stored lead in place — regenerates openers + full call script

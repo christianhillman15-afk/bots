@@ -82,16 +82,16 @@ async function findWebsiteClaude(business) {
       }),
       signal: controller.signal,
     });
-    if (!res.ok) return null;
+    if (!res.ok) return { ok: false, url: null };
     const data = await res.json();
     const text = (data.content || [])
       .filter((b) => b.type === 'text')
       .map((b) => b.text)
       .join(' ')
       .trim();
-    return parseUrl(text);
+    return { ok: true, url: parseUrl(text) };
   } catch {
-    return null;
+    return { ok: false, url: null };
   } finally {
     clearTimeout(t);
   }
@@ -111,16 +111,16 @@ async function findWebsiteGemini(business) {
       }),
       signal: controller.signal,
     });
-    if (!res.ok) return null;
+    if (!res.ok) return { ok: false, url: null };
     const data = await res.json();
     const text = (data?.candidates?.[0]?.content?.parts || [])
       .map((p) => p.text)
       .filter(Boolean)
       .join(' ')
       .trim();
-    return parseUrl(text);
+    return { ok: true, url: parseUrl(text) };
   } catch {
-    return null;
+    return { ok: false, url: null };
   } finally {
     clearTimeout(t);
   }
@@ -149,19 +149,24 @@ export async function verifyMissingWebsites({ store, limit = 0, onProgress = () 
   let foundSites = 0;
   let removedOk = 0;
   let confirmedNone = 0;
+  let failed = 0;
   let done = 0;
 
-  await mapLimit(slice, Math.min(4, config.auditConcurrency), async (lead) => {
-    let url = null;
+  // Gentle concurrency keeps us under free-tier rate limits.
+  await mapLimit(slice, 2, async (lead) => {
+    let r = { ok: false, url: null };
     try {
-      url = await findWebsite(lead.business);
+      r = await findWebsite(lead.business);
     } catch {
-      /* leave for a later run */
+      r = { ok: false, url: null };
     }
-    lead.business.websiteVerified = true;
 
-    if (url) {
-      lead.business.website = url;
+    if (!r.ok) {
+      // search errored/throttled — leave unverified so a later run retries it
+      failed++;
+    } else if (r.url) {
+      lead.business.websiteVerified = true;
+      lead.business.website = r.url;
       const audit = await auditBusiness(lead.business);
       const score = scoreLead(lead.business, audit);
       if (!isLead(audit)) {
@@ -175,10 +180,11 @@ export async function verifyMissingWebsites({ store, limit = 0, onProgress = () 
         foundSites++;
       }
     } else {
+      lead.business.websiteVerified = true; // confirmed: no website of their own
       confirmedNone++;
     }
     done++;
-    onProgress({ done, total: slice.length, foundSites, removedOk, confirmedNone });
+    onProgress({ done, total: slice.length, foundSites, removedOk, confirmedNone, failed });
   });
 
   store.save();
@@ -187,6 +193,7 @@ export async function verifyMissingWebsites({ store, limit = 0, onProgress = () 
     foundSites,
     removedOk,
     confirmedNone,
+    failed,
     remaining: Math.max(0, targets.length - slice.length),
   };
 }
