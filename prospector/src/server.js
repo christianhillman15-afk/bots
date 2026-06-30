@@ -307,6 +307,17 @@ export function startServer() {
     res.send(toCsv(leads, cols));
   });
 
+  // Refresh every lead's openers/script on boot so a deploy always applies the
+  // latest scoring + outreach logic (pure CPU, no API calls; leaves status/notes
+  // untouched). This is what makes "git pull && restart" enough — no button click.
+  let refreshed = 0;
+  for (const lead of store.all()) {
+    if (!lead.business || !lead.audit) continue;
+    lead.score = scoreLead(lead.business, lead.audit);
+    refreshed++;
+  }
+  if (refreshed) store.save();
+
   // 0.0.0.0 so it's reachable when hosted (containers/PaaS), not just locally.
   app.listen(config.port, '0.0.0.0', () => {
     log.title('OXSOME PROSPECTOR — dashboard');
@@ -314,7 +325,7 @@ export function startServer() {
     if (!isLive()) log.warn('DEMO MODE (no Places key). Scans use sample data.');
     if (config.dashboardPassword) log.ok('Password login required.');
     else log.warn('No DASHBOARD_PASSWORD set — dashboard is open. Set one before hosting publicly.');
-    log.info(`${store.size} leads loaded · data in ${config.dataDir}`);
+    log.info(`${store.size} leads loaded (${refreshed} scripts refreshed) · data in ${config.dataDir}`);
     scheduler.start(); // no-op unless AUTO_SCAN is enabled
   });
 }
