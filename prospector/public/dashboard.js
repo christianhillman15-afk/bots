@@ -21,7 +21,28 @@ async function boot() {
   $('#scanBtn').addEventListener('click', runScan);
   $('#exportBtn').addEventListener('click', () => { window.location = '/api/export.csv?' + qs(); });
   $('#rescoreBtn').addEventListener('click', rescoreAll);
+  $('#emailBtn').addEventListener('click', findEmails);
   await refresh();
+}
+
+async function findEmails() {
+  const btn = $('#emailBtn');
+  if (!confirm('Visit lead websites to find contact emails? Leads with a website only — no-website leads stay phone-only. This can take a few minutes.')) return;
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = '✉️ Finding…';
+  try {
+    const r = await fetch('/api/find-emails', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed');
+    btn.textContent = `✓ +${d.found} emails`;
+    if (d.remaining > 0) btn.title = `${d.remaining} sites left — click again to continue`;
+    await refresh();
+    setTimeout(() => (btn.textContent = original), 2500);
+  } catch (e) {
+    btn.textContent = '✗ ' + (e.message || 'Failed'); setTimeout(() => (btn.textContent = original), 2500);
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 async function rescoreAll() {
@@ -249,6 +270,7 @@ function leadCard(l) {
         <div class="detail__side">
           <h4 class="detail__h">Contact</h4>
           <div class="kv">📞 ${esc(b.phone || '—')}</div>
+          <div class="kv">✉️ ${b.email ? `<a href="mailto:${esc(b.email)}">${esc(b.email)}</a>` : '<span class="muted">no email found — use phone</span>'}</div>
           <div class="kv">🌐 ${site}</div>
           <div class="kv">📍 ${esc(b.address || '')}</div>
           ${mapsHref ? `<div class="kv"><a href="${mapsHref}" target="_blank" rel="noopener">View on Google Maps ↗</a></div>` : ''}

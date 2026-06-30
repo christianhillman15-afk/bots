@@ -8,6 +8,7 @@ import { METROS, topMetros, findMetro } from './data/metros.js';
 import { CATEGORIES, findCategory, defaultCategories } from './data/categories.js';
 import { toCsv } from './util.js';
 import { scoreLead } from './scoring/leadScore.js';
+import { enrichEmails } from './enrich/emailFinder.js';
 import { createScheduler } from './scheduler.js';
 import { log } from './logger.js';
 
@@ -140,6 +141,20 @@ export function startServer() {
     res.json({ ok: true, rescored: n });
   });
 
+  // Find contact emails on lead websites (batched so the request returns).
+  app.post('/api/find-emails', async (_req, res) => {
+    if (scanning) return res.status(409).json({ error: 'Busy — a scan is running.' });
+    scanning = true;
+    try {
+      const result = await enrichEmails({ store, limit: 250 });
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    } finally {
+      scanning = false;
+    }
+  });
+
   // Filtered leads + facet counts
   app.get('/api/leads', (req, res) => {
     const q = req.query;
@@ -212,6 +227,7 @@ export function startServer() {
       { header: 'city', get: (l) => l.business?.city },
       { header: 'state', get: (l) => l.business?.state },
       { header: 'phone', get: (l) => l.business?.phone },
+      { header: 'email', get: (l) => l.business?.email },
       { header: 'website', get: (l) => l.business?.website },
       { header: 'presence', get: (l) => l.presence },
       { header: 'top_problem', get: (l) => l.audit?.problems?.[0]?.label },

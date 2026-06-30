@@ -7,6 +7,7 @@ import { CATEGORIES, findCategory, defaultCategories } from '../src/data/categor
 import { startServer } from '../src/server.js';
 import { writeCsv } from '../src/export.js';
 import { scoreLead } from '../src/scoring/leadScore.js';
+import { enrichEmails } from '../src/enrich/emailFinder.js';
 import { log, color } from '../src/logger.js';
 import { usd } from '../src/util.js';
 
@@ -181,6 +182,23 @@ function cmdServe(opts) {
   startServer();
 }
 
+// Visit each lead's website and pull a contact email into the record.
+async function cmdFindEmails(opts) {
+  const store = new LeadStore();
+  const tty = process.stdout.isTTY;
+  log.title('OXSOME PROSPECTOR — find emails');
+  log.info('Visiting lead websites to pull contact emails (sites only; no-website leads are phone-only)…');
+  const res = await enrichEmails({
+    store,
+    limit: Number(opts.limit) || 0,
+    onProgress: (p) => {
+      if (tty && p.done % 5 === 0) process.stdout.write('\r' + `  checked ${p.done}/${p.total} · found ${p.found}`.padEnd(60));
+    },
+  });
+  if (tty) process.stdout.write('\r'.padEnd(62) + '\r');
+  log.ok(`Found ${res.found} emails (checked ${res.processed} sites)${res.remaining ? ` · ${res.remaining} still to check — run again` : ''}.`);
+}
+
 // Re-score every stored lead in place — regenerates openers + full call script
 // from saved data. No API calls; keeps status, notes, and first-seen dates.
 function cmdRescore() {
@@ -249,6 +267,7 @@ ${color.bold('Commands:')}
   stats     Summary of the lead pipeline
   export    Write leads to CSV for outreach
   rescore   Regenerate openers + full script on ALL stored leads (no API calls)
+  find-emails  Visit lead websites and pull contact emails (--limit N optional)
   serve     Launch the web dashboard
 
 ${color.bold('scan options:')}
@@ -287,6 +306,7 @@ const run = {
   export: () => cmdExport(opts),
   serve: () => cmdServe(opts),
   rescore: () => cmdRescore(opts),
+  'find-emails': () => cmdFindEmails(opts),
 };
 (async () => {
   if (!cmd || opts.help || cmd === 'help') return help();

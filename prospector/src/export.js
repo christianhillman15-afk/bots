@@ -11,6 +11,7 @@ const COLUMNS = [
   { header: 'city', get: (l) => l.business?.city },
   { header: 'state', get: (l) => l.business?.state },
   { header: 'phone', get: (l) => l.business?.phone },
+  { header: 'email', get: (l) => l.business?.email },
   { header: 'website', get: (l) => l.business?.website },
   { header: 'presence', get: (l) => l.presence },
   { header: 'top_problem', get: (l) => l.audit?.problems?.[0]?.label },
