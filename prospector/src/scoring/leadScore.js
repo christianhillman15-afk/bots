@@ -151,7 +151,7 @@ function buildOpeners(business, audit, { opportunityUsd, estMonthlyLeads }) {
     problemShort = `I couldn't find a website for you anywhere — just your Google listing`;
     problemLong = `I went looking for your website and couldn't find one anywhere — just your Google Business listing`;
   } else if (audit.presence === 'social_only') {
-    problemShort = `your only web presence is a social page you don't actually own`;
+    problemShort = `the only web presence I could find for you is a social page you don't actually own`;
     problemLong = `the only web presence I could find is a social page — which you don't own, can't customize, and Google won't rank`;
   } else if (audit.presence === 'broken') {
     problemShort = `your website looks broken right now (${topProblem})`;
@@ -245,10 +245,16 @@ function buildScript(business, audit, { opportunityUsd }) {
     ? ` Honestly, right now ${comp.name} is showing up ahead of you and pulling in a lot of those customers.`
     : '';
   let problemLong;
-  if (audit.presence === 'none') problemLong = `you don't have a website at all — just your Google listing`;
-  else if (audit.presence === 'social_only') problemLong = `the only web presence you have is a social page you don't own or control`;
+  if (audit.presence === 'none') problemLong = `when I went looking I couldn't find a website for you anywhere — just your Google listing`;
+  else if (audit.presence === 'social_only') problemLong = `the only thing I could find online for you is a social page — no website of your own that you control`;
   else if (audit.presence === 'broken') problemLong = `your website is currently down or broken (${topProblem})`;
   else problemLong = `your website has ${topProblem} that's quietly costing you customers`;
+  // If our "no website" read is ever wrong (their site just isn't on Google),
+  // this line lets the rep recover gracefully instead of getting caught flat.
+  const siteRecovery =
+    audit.presence === 'none' || audit.presence === 'social_only'
+      ? `\n• "Actually, we DO have a website." → "Oh perfect — I couldn't find it when I searched, and honestly that's half the problem: if it's not coming up when I look for ${cat}${cityPhrase}, your customers probably aren't finding it either. What's the web address? … Mind if I take a quick look and send you a free teardown of what'd help it actually show up and bring in calls?"`
+      : '';
   const costLine =
     opportunityUsd >= 500
       ? `By my rough math that's around ${usd(opportunityUsd)} a month in jobs going to competitors who just show up better online.`
@@ -267,7 +273,7 @@ function buildScript(business, audit, { opportunityUsd }) {
 
     `▸ THE CLOSE (book the next step)\n"I don't want to take more of your time on the phone. What I'd love to do is record you a free 3-minute video showing exactly what I'd fix first and what it'd look like — no charge, no obligation. What's the best email or cell to send that to?"\n(Then: "Perfect — and if it makes sense after you watch it, we hop on a quick 15-minute call. Sound fair?")`,
 
-    `▸ COMMON OBJECTIONS\n• "I already have a website / a guy." → "Love that — most sites we take over were quietly losing the owner calls. I'll still send the free teardown; if yours is already crushing it, you get a free second opinion."\n• "I'm too busy / not interested." → "Completely understand — that's the point. You run the business, we handle the marketing. Can I just send the free video and you look when you have a sec?"\n• "How much is it?" → "Plans start around $750/month with $0 down to build — but I don't want to talk price until I show you what we'd do and what it's worth. Fair?"\n• "Just send me info." → "Will do — what's the best email? I'll send a personalized 3-minute teardown, not a generic brochure."`,
+    `▸ COMMON OBJECTIONS${siteRecovery}\n• "I already have a website / a guy." → "Love that — most sites we take over were quietly losing the owner calls. I'll still send the free teardown; if yours is already crushing it, you get a free second opinion."\n• "I'm too busy / not interested." → "Completely understand — that's the point. You run the business, we handle the marketing. Can I just send the free video and you look when you have a sec?"\n• "How much is it?" → "Plans start around $750/month with $0 down to build — but I don't want to talk price until I show you what we'd do and what it's worth. Fair?"\n• "Just send me info." → "Will do — what's the best email? I'll send a personalized 3-minute teardown, not a generic brochure."`,
 
     `▸ VOICEMAIL (if no answer)\n"Hi ${name}, this is [your name] with Oxsome — we build websites and run marketing for ${cat}${cityPhrase}. I noticed ${problemLong} and put together a quick free teardown for you. Give me a call back at [your number], or I'll try you again. Thanks!"`,
 

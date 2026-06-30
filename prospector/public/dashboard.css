@@ -146,6 +146,10 @@ select:focus, input:focus { border-color: var(--purple); }
 .tag--social_only { background: rgba(139,61,255,.16); color: #c79bff; border-color: rgba(139,61,255,.4); }
 .tag--broken { background: rgba(255,120,40,.14); color: #ff9d57; border-color: rgba(255,120,40,.4); }
 .tag--weak { background: rgba(255,176,32,.12); color: var(--amber); border-color: rgba(255,176,32,.35); }
+.vbadge { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; font-weight: 700; }
+.vbadge--ok { background: rgba(34,197,94,.14); color: var(--green); border-color: rgba(34,197,94,.4); }
+.vbadge--warn { background: rgba(255,176,32,.16); color: var(--amber); border-color: rgba(255,176,32,.5); }
+.act-hassite:hover { border-color: var(--amber); color: var(--amber); background: rgba(255,176,32,.1); }
 .lead__opp { text-align: right; }
 .lead__opp .n { color: var(--green); font-weight: 700; font-family: 'Space Grotesk',sans-serif; }
 .lead__opp .l { color: var(--muted); font-size: 11px; }

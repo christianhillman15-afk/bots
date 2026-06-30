@@ -62,17 +62,28 @@ async function verifyWebsites() {
     alert('To verify websites, add a Claude key (ANTHROPIC_API_KEY) or Gemini key to your .env and restart, then try again.');
     return;
   }
-  if (!confirm('Search the web (by name + phone) for every "no website" lead to confirm or find their real site? Runs in batches of 100.')) return;
+  if (!confirm('Web-search EVERY "no website" lead (by name + phone) to confirm or find their real site? This processes your whole list and may take a few minutes.')) return;
   const original = btn.textContent;
-  btn.disabled = true; btn.textContent = '🔍 Searching…';
+  btn.disabled = true;
+  let found = 0, removed = 0, confirmed = 0;
   try {
-    const r = await fetch('/api/verify-websites', { method: 'POST' });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error || 'Failed');
-    btn.textContent = `✓ ${d.foundSites} sites found`;
-    if (d.remaining > 0) btn.title = `${d.remaining} leads left — click again to continue`;
+    // Loop through the whole list, one batch at a time, until none are left.
+    for (let i = 0; i < 30; i++) {
+      btn.textContent = `🔍 Verifying… (${found + removed + confirmed} done)`;
+      const r = await fetch('/api/verify-websites', { method: 'POST' });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Failed');
+      found += d.foundSites || 0; removed += d.removedOk || 0; confirmed += d.confirmedNone || 0;
+      if (!d.remaining) break;
+      // No forward progress (everything throttled) — stop instead of spinning forever.
+      if (((d.foundSites || 0) + (d.removedOk || 0) + (d.confirmedNone || 0)) === 0) {
+        btn.title = `${d.remaining} left — rate-limited, try again in a minute`;
+        break;
+      }
+    }
+    btn.textContent = `✓ ${found} had sites · ${confirmed} confirmed no-site`;
     await refresh();
-    setTimeout(() => (btn.textContent = original), 3000);
+    setTimeout(() => (btn.textContent = original), 4000);
   } catch (e) {
     btn.textContent = '✗ ' + (e.message || 'Failed'); setTimeout(() => (btn.textContent = original), 3000);
   } finally {
@@ -257,8 +268,17 @@ function leadCard(l) {
   const problems = (a.problems || []).map((p) =>
     `<div class="problem"><span class="problem__sev sev${p.severity}"></span><div><b>${esc(p.label)}</b><span>${esc(p.detail || '')}</span></div></div>`
   ).join('');
-  const statusOpts = ['new', 'called', 'no_answer', 'callback', 'interested', 'won', 'dead']
+  const statusOpts = ['new', 'called', 'no_answer', 'callback', 'interested', 'won', 'dead', 'has_site']
     .map((o) => `<option ${((l.status || 'new') === o) ? 'selected' : ''}>${o}</option>`).join('');
+
+  // Verified vs unverified "no website" — so a rep never claims "you have no site"
+  // on a lead we only assume is missing one (Google often just omits the URL).
+  const noSiteClaim = l.presence === 'none' || l.presence === 'social_only';
+  const verifyBadge = noSiteClaim
+    ? (b.websiteVerified
+        ? `<span class="vbadge vbadge--ok" title="We web-searched their name + phone and confirmed they have no website of their own. Safe to mention on the call.">✓ Confirmed no site</span>`
+        : `<span class="vbadge vbadge--warn" title="This is only Google's data — Google often omits a business's real website. Click 'Verify websites' before claiming they have no site, or ask on the call instead of stating it.">⚠ Unconfirmed — verify first</span>`)
+    : '';
 
   // Call-tracking row buttons (based on the lead's current status)
   const callStatus = l.status || 'new';
@@ -269,7 +289,7 @@ function leadCard(l) {
       `<button class="actbtn act-no" data-id="${esc(l.id)}" data-status="no_answer" title="They didn't answer">📵 No answer</button>` +
       `<button class="actbtn act-cb" data-id="${esc(l.id)}" data-status="callback" title="Call back later">📅 Later</button>`;
   } else {
-    const lbl = callStatus === 'called' ? '✅ Called' : callStatus === 'no_answer' ? '📵 No answer' : callStatus === 'callback' ? '📅 Call back' : esc(callStatus);
+    const lbl = callStatus === 'called' ? '✅ Called' : callStatus === 'no_answer' ? '📵 No answer' : callStatus === 'callback' ? '📅 Call back' : callStatus === 'has_site' ? '🌐 Has a site' : esc(callStatus);
     rowActions =
       `<span class="statuslbl statuslbl--${esc(callStatus)}">${lbl}</span>` +
       `<button class="actbtn act-back" data-id="${esc(l.id)}" data-status="new" title="Move back to To-Call (undo)">↩</button>`;
@@ -363,6 +383,7 @@ function leadCard(l) {
         <div class="lead__name">${esc(b.name)}</div>
         <div class="lead__meta">
           <span class="tag tag--${l.presence}" title="What's wrong with their web presence.">${esc(a.headline)}</span>
+          ${verifyBadge}
           <span>${esc(b.categoryLabel || b.category || '')}</span>
           <span>· ${esc(b.city || '')}, ${esc(b.state || '')}</span>
         </div>
@@ -414,6 +435,7 @@ function leadCard(l) {
 
       <div class="detail__actions">
         ${b.website ? `<a class="linkbtn" href="https://pagespeed.web.dev/report?url=${encodeURIComponent(b.website)}" target="_blank" rel="noopener">Run PageSpeed ↗</a>` : ''}
+        ${noSiteClaim ? `<button class="actbtn act-hassite" data-id="${esc(l.id)}" data-status="has_site" title="You found out they DO have a website — pull this lead out of your call list">🌐 They have a site — remove</button>` : ''}
         ${l.compliance?.strictOutreachState ? '<span class="strict">⚠ Strict call/SMS state — email or manual landline only</span>' : ''}
         <select class="statussel" data-id="${esc(l.id)}">${statusOpts}</select>
       </div>
