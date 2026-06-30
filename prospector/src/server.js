@@ -7,6 +7,7 @@ import { writeCsv } from './export.js';
 import { METROS, topMetros, findMetro } from './data/metros.js';
 import { CATEGORIES, findCategory, defaultCategories } from './data/categories.js';
 import { toCsv } from './util.js';
+import { createScheduler } from './scheduler.js';
 import { log } from './logger.js';
 
 /* Constant-time string compare to avoid leaking the password via timing. */
@@ -72,6 +73,11 @@ export function startServer() {
   const app = express();
   const store = new LeadStore();
   let scanning = false;
+  const isBusy = () => scanning;
+  const setBusy = (v) => {
+    scanning = v;
+  };
+  const scheduler = createScheduler({ store, isBusy, setBusy });
 
   // Health check for hosting platforms — must stay public (before auth).
   app.get('/healthz', (_req, res) => res.json({ ok: true, leads: store.size, live: isLive() }));
@@ -110,11 +116,15 @@ export function startServer() {
       categories: CATEGORIES.map((c) => ({ key: c.key, label: c.label, tier: c.tier })),
       metros: METROS.map((m) => ({ city: m.city, state: m.state, metroPopulation: m.metroPopulation })),
       states: [...new Set(STATES())].sort(),
+      autoScan: scheduler.status(),
     });
     function STATES() {
       return store.all().map((l) => l.business?.state).filter(Boolean);
     }
   });
+
+  // Auto-pilot status
+  app.get('/api/auto', (_req, res) => res.json(scheduler.status()));
 
   // Filtered leads + facet counts
   app.get('/api/leads', (req, res) => {
@@ -210,6 +220,7 @@ export function startServer() {
     if (config.dashboardPassword) log.ok('Password login required.');
     else log.warn('No DASHBOARD_PASSWORD set — dashboard is open. Set one before hosting publicly.');
     log.info(`${store.size} leads loaded · data in ${config.dataDir}`);
+    scheduler.start(); // no-op unless AUTO_SCAN is enabled
   });
 }
 

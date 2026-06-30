@@ -26,6 +26,13 @@ export const config = {
   // (fine for running privately on your own machine).
   dashboardUser: process.env.DASHBOARD_USER?.trim() || 'surge',
   dashboardPassword: process.env.DASHBOARD_PASSWORD?.trim() || '',
+  // Auto-pilot: when on, the app scans on a schedule, rotating across all
+  // metros × categories so leads keep accumulating with no manual clicks.
+  // Defaults are tuned to stay inside Google's free 1,000 searches/month.
+  autoScan: /^(1|true|yes|on)$/i.test(process.env.AUTO_SCAN || ''),
+  autoScanIntervalMin: Number(process.env.AUTO_SCAN_INTERVAL_MIN) || 180,
+  autoScanChunk: Number(process.env.AUTO_SCAN_CHUNK) || 3, // categories per tick
+  autoScanMaxPerCity: Number(process.env.AUTO_SCAN_MAX) || 20,
 };
 
 /** True when we have a real Places key; otherwise we run on demo data. */

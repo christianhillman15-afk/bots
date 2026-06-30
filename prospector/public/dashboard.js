@@ -58,6 +58,22 @@ async function refresh() {
   if (state.tier) leads = leads.filter((l) => l.score?.tier === state.tier);
   $('#resultCount').textContent = `${leads.length} lead${leads.length === 1 ? '' : 's'}`;
   renderLeads(leads);
+  renderAuto();
+}
+
+async function renderAuto() {
+  const el = $('#autoStatus');
+  if (!el) return;
+  try {
+    const a = await fetch('/api/auto').then((r) => r.json());
+    if (!a.enabled) { el.hidden = true; return; }
+    const last = a.lastResult
+      ? `Last: +${a.lastResult.newLeads} new from ${esc(a.lastResult.metro)}.`
+      : 'Warming up…';
+    const next = a.nextRunAt ? ` Next run ~${new Date(a.nextRunAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.` : '';
+    el.innerHTML = `🔄 <b>Auto-scan ON</b> — sweeping the US every ${a.intervalMin} min, now around <b>${esc(a.position?.metro || '')}</b>. ${last}${next}`;
+    el.hidden = false;
+  } catch { el.hidden = true; }
 }
 
 function renderStats(s) {

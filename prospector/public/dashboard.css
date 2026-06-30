@@ -70,6 +70,9 @@ select:focus, input:focus { border-color: var(--purple); }
 .scanstatus.running { border-color: var(--amber); color: var(--amber); }
 .scanstatus.done { border-color: var(--green); color: var(--green); }
 .scanstatus.error { border-color: var(--red); color: var(--red-2); }
+.autostatus { margin-top: 12px; padding: 11px 14px; border-radius: var(--radius-sm); font-size: 13px;
+  background: rgba(43,212,125,.08); border: 1px solid rgba(43,212,125,.35); color: #b8f3d4; }
+.autostatus b { color: #fff; }
 .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,.25); border-top-color: var(--amber); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: -2px; margin-right: 8px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
