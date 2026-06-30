@@ -4,7 +4,7 @@ import { config } from './config.js';
 import { METROS } from './data/metros.js';
 import { CATEGORIES } from './data/categories.js';
 import { runScan } from './scan.js';
-import { verifyMissingWebsites, searchReady } from './enrich/websiteFinder.js';
+import { verifyMissingWebsites, enrichOwners, searchReady } from './enrich/websiteFinder.js';
 import { enrichEmails } from './enrich/emailFinder.js';
 import { log } from './logger.js';
 
@@ -82,6 +82,8 @@ export function createScheduler({ store, isBusy, setBusy }) {
             if (searchReady()) {
               const v = await verifyMissingWebsites({ store, limit: config.autoEnrichLimit });
               if (v.foundSites || v.removedOk) log.ok(`auto-verify: ${v.foundSites} real sites found, ${v.removedOk} removed (had fine sites)`);
+              const o = await enrichOwners({ store, limit: config.autoEnrichLimit });
+              if (o.found) log.ok(`auto-owners: +${o.found} owner names`);
             }
             const e = await enrichEmails({ store, limit: config.autoEnrichLimit });
             if (e.found) log.ok(`auto-emails: +${e.found} contact emails`);

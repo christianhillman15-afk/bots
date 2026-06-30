@@ -7,6 +7,7 @@ const COLUMNS = [
   { header: 'score', get: (l) => l.score?.value },
   { header: 'tier', get: (l) => l.score?.tier },
   { header: 'business', get: (l) => l.business?.name },
+  { header: 'owner', get: (l) => l.business?.ownerName },
   { header: 'category', get: (l) => l.business?.categoryLabel },
   { header: 'city', get: (l) => l.business?.city },
   { header: 'state', get: (l) => l.business?.state },

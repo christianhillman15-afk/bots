@@ -114,9 +114,18 @@ select:focus, input:focus { border-color: var(--purple); }
 .act-no:hover { border-color: var(--amber); color: var(--amber); background: rgba(255,176,32,.1); }
 .act-back { padding: 7px 10px; }
 .act-back:hover { border-color: var(--blue); color: var(--blue-2); }
+.act-cb:hover { border-color: var(--purple); color: var(--purple-2); background: rgba(139,61,255,.1); }
 .statuslbl { font-size: 12px; font-weight: 700; white-space: nowrap; }
 .statuslbl--called { color: var(--green); }
 .statuslbl--no_answer { color: var(--amber); }
+.statuslbl--callback { color: var(--purple-2); }
+
+/* Notes box */
+.notesbox { width: 100%; box-sizing: border-box; min-height: 70px; resize: vertical; margin-bottom: 8px;
+  background: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--text);
+  font-family: inherit; font-size: 13px; padding: 10px 12px; outline: none; }
+.notesbox:focus { border-color: var(--purple); }
+.savenote { font-size: 13px; }
 
 /* Leads */
 .leads { display: flex; flex-direction: column; gap: 10px; }

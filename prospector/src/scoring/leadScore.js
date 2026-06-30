@@ -118,6 +118,8 @@ function buildReasons(business, audit, { affordability, market, reviews }) {
   if ((business.avgTicketUsd || 0) >= 1500) r.push(`High-ticket trade (~${usd(business.avgTicketUsd)}/job) — one recovered customer pays for months of Oxsome.`);
   // Market
   if (market >= 0.6) r.push(`Big, busy market (${business.city}, ${business.state}) — lots of demand leaking to competitors.`);
+  // Competitor angle
+  if (business.topCompetitor?.name) r.push(`Competitor "${business.topCompetitor.name}" (${business.topCompetitor.reviewCount || 'many'} reviews) is outranking them and taking these customers.`);
   return r;
 }
 
@@ -136,6 +138,11 @@ function buildOpeners(business, audit, { opportunityUsd, estMonthlyLeads }) {
   const topProblem = audit.problems?.[0]?.label?.toLowerCase() || 'a few issues';
   const extraCount = Math.max(0, (audit.problems?.length || 1) - 1);
   const andMore = extraCount ? ` (plus ${extraCount} more)` : '';
+  const owner = (business.ownerName || '').trim().split(/\s+/)[0] || '';
+  const comp = business.topCompetitor;
+  const competitorLine = comp?.name
+    ? ` Meanwhile ${comp.name} (${comp.reviewCount ? comp.reviewCount + '+ ' : ''}reviews) is showing up first and pulling in those customers.`
+    : '';
 
   // The pain, phrased per presence type
   let problemShort; // for short channels
@@ -170,26 +177,26 @@ function buildOpeners(business, audit, { opportunityUsd, estMonthlyLeads }) {
 
   // ── Channel-specific openers ────────────────────────────────────────────
   const callScript =
-    `Hi, is this ${name}? Great — my name's [your name] with Oxsome, we're a Minnesota web & marketing company. ` +
-    `I'll be quick: I was looking up ${cat}${cityPhrase} and ${problemShort}. ${proof}, so it stood out to me — ${cost}. ` +
+    `Hi, is this ${owner || name}? Great — my name's [your name] with Oxsome, we're a Minnesota web & marketing company. ` +
+    `I'll be quick: I was looking up ${cat}${cityPhrase} and ${problemShort}. ${proof}, so it stood out to me — ${cost}.${competitorLine} ` +
     `The reason I'm calling: we build small businesses a brand-new website at $0 down and our AI handles the SEO, Google Ads and social media so you get more calls. ` +
     `I'd love to send you a free 3-minute video showing exactly what I'd fix first — what's the best email or cell to send that to?`;
 
   const email =
     `Subject: ${name} — quick note about your ${cat} website\n\n` +
-    `Hi ${name},\n\n` +
-    `I came across ${name} while looking at ${cat}${cityPhrase}, and ${problemLong}. ${proof} — which is exactly why it caught my eye, because ${cost}.\n\n` +
+    `Hi ${owner || name},\n\n` +
+    `I came across ${name} while looking at ${cat}${cityPhrase}, and ${problemLong}. ${proof} — which is exactly why it caught my eye, because ${cost}.${competitorLine}\n\n` +
     `I run Oxsome, a Minnesota agency that's built sites for 500+ small businesses (named the state's Best Web Designer three years running). ${offer}\n\n` +
     `Can I send over a free 3-minute video teardown of what I'd fix first? No obligation either way.\n\n` +
     `— [Your name], Oxsome\n612-261-0955 · oxsome.com`;
 
   const sms =
-    `Hi ${name}, this is [your name] with Oxsome. I was looking at ${cat}${cityPhrase} and ${problemShort} — ` +
+    `Hi ${owner || name}, this is [your name] with Oxsome. I was looking at ${cat}${cityPhrase} and ${problemShort} — ` +
     `for a shop with ${reviews} reviews that's costing you calls. We build sites $0 down + our AI runs your SEO/ads/social. ` +
     `Can I text you a free 60-second audit?`;
 
   const videoHook =
-    `Hey ${name} — I recorded you a free 3-minute video showing a few things on your online presence that are quietly ` +
+    `Hey ${owner || name} — I recorded you a free 3-minute video showing a few things on your online presence that are quietly ` +
     `sending ${cat} customers to your competitors${cityPhrase} (starting with: ${topProblem}). ` +
     `Want me to send it over? No pitch — just the teardown so you can fix it yourself or have us do it.`;
 
@@ -203,7 +210,7 @@ function buildOpeners(business, audit, { opportunityUsd, estMonthlyLeads }) {
 
 /* A few alternative one-line openers so the rep can pick the angle that fits. */
 function buildHooks(business, audit) {
-  const name = business.name || 'there';
+  const name = (business.ownerName || '').trim().split(/\s+/)[0] || business.name || 'there';
   const cat = (business.categoryLabel || 'business').toLowerCase();
   const cityPhrase = business.city ? ` in ${business.city}` : '';
   const reviews = business.reviewCount || 0;
@@ -226,11 +233,17 @@ function buildHooks(business, audit) {
 /* A complete, structured cold-call script the rep can read top to bottom. */
 function buildScript(business, audit, { opportunityUsd }) {
   const name = business.name || 'there';
+  const owner = (business.ownerName || '').trim().split(/\s+/)[0] || '';
+  const askFor = owner ? `Hi, could I grab ${owner} for a sec?` : `Hi, is this ${name}?`;
   const cat = (business.categoryLabel || 'business').toLowerCase();
   const cityPhrase = business.city ? ` in ${business.city}, ${business.state || ''}`.trimEnd() : '';
   const reviews = business.reviewCount || 0;
   const rating = business.rating ? `${business.rating}★` : 'strong reviews';
   const topProblem = audit.problems?.[0]?.label?.toLowerCase() || 'a few issues';
+  const comp = business.topCompetitor;
+  const competitorLine = comp?.name
+    ? ` Honestly, right now ${comp.name} is showing up ahead of you and pulling in a lot of those customers.`
+    : '';
   let problemLong;
   if (audit.presence === 'none') problemLong = `you don't have a website at all — just your Google listing`;
   else if (audit.presence === 'social_only') problemLong = `the only web presence you have is a social page you don't own or control`;
@@ -242,9 +255,9 @@ function buildScript(business, audit, { opportunityUsd }) {
       : `That's sending business to competitors who simply show up better online.`;
 
   return [
-    `▸ OPENING\n"Hi, is this ${name}? Hey ${name}, my name's [your name] with Oxsome — we're a web & marketing company up in Minnesota. Did I catch you at an okay time for 60 seconds? I promise to be quick."\n(If "I'm busy" → "Totally get it — 30 seconds, and if it's not relevant I'll let you go. Fair?")`,
+    `▸ OPENING\n"${askFor} Hey, my name's [your name] with Oxsome — we're a web & marketing company up in Minnesota. Did I catch you at an okay time for 60 seconds? I promise to be quick."\n(If "I'm busy" → "Totally get it — 30 seconds, and if it's not relevant I'll let you go. Fair?")`,
 
-    `▸ THE REASON FOR THE CALL (HOOK)\n"So the reason I'm calling specifically — I was looking at ${cat}${cityPhrase} and noticed ${problemLong}. And with ${reviews} reviews at ${rating}, you're clearly one of the better shops around, which is exactly why it jumped out at me. ${costLine}"`,
+    `▸ THE REASON FOR THE CALL (HOOK)\n"So the reason I'm calling specifically — I was looking at ${cat}${cityPhrase} and noticed ${problemLong}. And with ${reviews} reviews at ${rating}, you're clearly one of the better shops around, which is exactly why it jumped out at me. ${costLine}${competitorLine}"`,
 
     `▸ CREDIBILITY\n"Quick background so you know I'm legit — Oxsome has built sites for over 500 small businesses, and we've been named Minnesota's Best Web Designer three years running. We work with a lot of ${cat} and home-service companies just like you."`,
 

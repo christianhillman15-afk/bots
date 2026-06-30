@@ -47,6 +47,12 @@ export async function runScan({
         log.warn(`search failed (${category.label} in ${metro.city}): ${err.message}`);
         continue;
       }
+      // The market leader = most-reviewed business in this city+category.
+      // It's the "competitor stealing your calls" — captured free from the scan.
+      const leader = found.reduce(
+        (best, b) => ((b.reviewCount || 0) > (best?.reviewCount || 0) ? b : best),
+        null
+      );
       for (const b of found) {
         // enrich with the scoring metadata
         b.category = category.key;
@@ -58,6 +64,9 @@ export async function runScan({
         b.state = b.state || metro.state;
         b.metroPopulation = metro.metroPopulation;
         b.population = metro.population;
+        if (leader && leader.placeId !== b.placeId && (leader.reviewCount || 0) > (b.reviewCount || 0)) {
+          b.topCompetitor = { name: leader.name, rating: leader.rating, reviewCount: leader.reviewCount };
+        }
         const id = leadId(b);
         if (seen.has(id)) continue;
         seen.add(id);

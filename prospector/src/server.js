@@ -9,7 +9,7 @@ import { CATEGORIES, findCategory, defaultCategories } from './data/categories.j
 import { toCsv } from './util.js';
 import { scoreLead } from './scoring/leadScore.js';
 import { enrichEmails } from './enrich/emailFinder.js';
-import { verifyMissingWebsites, searchReady } from './enrich/websiteFinder.js';
+import { verifyMissingWebsites, enrichOwners, searchReady } from './enrich/websiteFinder.js';
 import { createScheduler } from './scheduler.js';
 import { log } from './logger.js';
 
@@ -158,6 +158,21 @@ export function startServer() {
     }
   });
 
+  // Find owner names (batched).
+  app.post('/api/find-owners', async (_req, res) => {
+    if (!searchReady()) return res.status(400).json({ error: 'No web-search key set (ANTHROPIC_API_KEY or GEMINI_API_KEY).' });
+    if (scanning) return res.status(409).json({ error: 'Busy — a scan is running.' });
+    scanning = true;
+    try {
+      const result = await enrichOwners({ store, limit: 100 });
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    } finally {
+      scanning = false;
+    }
+  });
+
   // Find contact emails on lead websites (batched so the request returns).
   app.post('/api/find-emails', async (_req, res) => {
     if (scanning) return res.status(409).json({ error: 'Busy — a scan is running.' });
@@ -240,6 +255,7 @@ export function startServer() {
       { header: 'score', get: (l) => l.score?.value },
       { header: 'tier', get: (l) => l.score?.tier },
       { header: 'business', get: (l) => l.business?.name },
+      { header: 'owner', get: (l) => l.business?.ownerName },
       { header: 'category', get: (l) => l.business?.categoryLabel },
       { header: 'city', get: (l) => l.business?.city },
       { header: 'state', get: (l) => l.business?.state },
@@ -274,7 +290,8 @@ export function startServer() {
       .filter((l) => l.business?.email);
     const cols = [
       { header: 'email', get: (l) => l.business.email },
-      { header: 'first_name', get: () => '' },
+      { header: 'first_name', get: (l) => (l.business?.ownerName || '').split(/\s+/)[0] },
+      { header: 'owner', get: (l) => l.business?.ownerName },
       { header: 'company_name', get: (l) => l.business?.name },
       { header: 'phone', get: (l) => l.business?.phone },
       { header: 'website', get: (l) => l.business?.website },

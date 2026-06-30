@@ -8,7 +8,7 @@ import { startServer } from '../src/server.js';
 import { writeCsv } from '../src/export.js';
 import { scoreLead } from '../src/scoring/leadScore.js';
 import { enrichEmails } from '../src/enrich/emailFinder.js';
-import { verifyMissingWebsites, searchReady } from '../src/enrich/websiteFinder.js';
+import { verifyMissingWebsites, enrichOwners, searchReady } from '../src/enrich/websiteFinder.js';
 import { log, color } from '../src/logger.js';
 import { usd } from '../src/util.js';
 
@@ -223,6 +223,27 @@ async function cmdVerifyWebsites(opts) {
   if (res.remaining) log.info(`${res.remaining} leads still to check — run again.`);
 }
 
+// Find owner/principal names for leads (Gemini/Claude), personalizing openers.
+async function cmdFindOwners(opts) {
+  const store = new LeadStore();
+  if (!searchReady()) {
+    log.err('No web-search key set. Add GEMINI_API_KEY (or ANTHROPIC_API_KEY) to .env.');
+    return;
+  }
+  log.title('OXSOME PROSPECTOR — find owner names');
+  const res = await enrichOwners({
+    store,
+    limit: Number(opts.limit) || 0,
+    onProgress: (p) => {
+      if (process.stdout.isTTY && p.done % 3 === 0) process.stdout.write('\r' + `  checked ${p.done}/${p.total} · found ${p.found}`.padEnd(56));
+    },
+  });
+  if (process.stdout.isTTY) process.stdout.write('\r'.padEnd(58) + '\r');
+  log.ok(`Found ${res.found} owner names (checked ${res.processed}).`);
+  if (res.failed) log.warn(`${res.failed} throttled — run again to retry.`);
+  if (res.remaining) log.info(`${res.remaining} still to check — run again.`);
+}
+
 // Re-score every stored lead in place — regenerates openers + full call script
 // from saved data. No API calls; keeps status, notes, and first-seen dates.
 function cmdRescore() {
@@ -293,6 +314,7 @@ ${color.bold('Commands:')}
   rescore   Regenerate openers + full script on ALL stored leads (no API calls)
   find-emails  Visit lead websites and pull contact emails (--limit N optional)
   verify-websites  Google-search "no website" leads to confirm/find real sites (needs GEMINI_API_KEY)
+  find-owners  Find owner/principal names to personalize outreach (needs GEMINI/ANTHROPIC key)
   serve     Launch the web dashboard
 
 ${color.bold('scan options:')}
@@ -333,6 +355,7 @@ const run = {
   rescore: () => cmdRescore(opts),
   'find-emails': () => cmdFindEmails(opts),
   'verify-websites': () => cmdVerifyWebsites(opts),
+  'find-owners': () => cmdFindOwners(opts),
 };
 (async () => {
   if (!cmd || opts.help || cmd === 'help') return help();

@@ -136,6 +136,116 @@ export async function findWebsite(business) {
   throw new Error('No web-search key set (ANTHROPIC_API_KEY or GEMINI_API_KEY)');
 }
 
+// ── Generic grounded search (returns raw text), used for owner lookup ───────
+async function runSearchClaude(prompt) {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), 40_000);
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': config.anthropicApiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: config.anthropicModel,
+        max_tokens: 256,
+        messages: [{ role: 'user', content: prompt }],
+        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
+      }),
+      signal: controller.signal,
+    });
+    if (!res.ok) return { ok: false, text: '' };
+    const data = await res.json();
+    const text = (data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join(' ').trim();
+    return { ok: true, text };
+  } catch {
+    return { ok: false, text: '' };
+  } finally {
+    clearTimeout(t);
+  }
+}
+async function runSearchGemini(prompt) {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), 30_000);
+  try {
+    const res = await fetch(endpoint(config.geminiModel), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': config.geminiApiKey },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], tools: [{ google_search: {} }] }),
+      signal: controller.signal,
+    });
+    if (!res.ok) return { ok: false, text: '' };
+    const data = await res.json();
+    const text = (data?.candidates?.[0]?.content?.parts || []).map((p) => p.text).filter(Boolean).join(' ').trim();
+    return { ok: true, text };
+  } catch {
+    return { ok: false, text: '' };
+  } finally {
+    clearTimeout(t);
+  }
+}
+function runSearch(prompt) {
+  if (config.anthropicApiKey) return runSearchClaude(prompt);
+  if (config.geminiApiKey) return runSearchGemini(prompt);
+  throw new Error('No web-search key set');
+}
+
+function parseName(text) {
+  if (!text) return null;
+  let s = text.trim().replace(/^["'\s]+|["'.\s]+$/g, '');
+  if (/^none$/i.test(s) || /\b(could not|couldn't|not find|no specific|unknown|unable)\b/i.test(s)) return null;
+  // take first line, strip a trailing title/role after a comma/dash
+  s = s.split('\n')[0].split(/[,–—-]/)[0].trim();
+  const words = s.split(/\s+/);
+  if (words.length < 1 || words.length > 4) return null; // likely a sentence, not a name
+  if (!/^[A-Za-z][A-Za-z.'-]*(\s+[A-Za-z][A-Za-z.'-]*)*$/.test(s)) return null;
+  return s;
+}
+
+/** Find the owner/principal's name for a business, or null. */
+export async function findOwner(business) {
+  const q = [business.name, business.city, business.state].filter(Boolean).join(', ');
+  const phone = business.phone ? ` Their phone is ${business.phone}.` : '';
+  const prompt =
+    `Search the web for the OWNER, founder, or principal of this local business: "${q}"` +
+    `${business.categoryLabel ? ` (a ${business.categoryLabel})` : ''}.${phone}\n` +
+    `Reply with ONLY that person's full name (e.g. "Mike Rodriguez"). If you can't find a specific person, reply exactly: NONE`;
+  const { ok, text } = await runSearch(prompt);
+  if (!ok) return { ok: false, name: null };
+  return { ok: true, name: parseName(text) };
+}
+
+const needsOwner = (l) => l.business && !l.business.ownerName && !l.business.ownerChecked;
+
+/** Enrich leads with owner names (Claude/Gemini), re-scoring so openers update. */
+export async function enrichOwners({ store, limit = 0, onProgress = () => {} }) {
+  const targets = store.all().filter(needsOwner);
+  const slice = limit > 0 ? targets.slice(0, limit) : targets;
+  let found = 0;
+  let failed = 0;
+  let done = 0;
+  await mapLimit(slice, 2, async (lead) => {
+    let r = { ok: false, name: null };
+    try {
+      r = await findOwner(lead.business);
+    } catch {
+      r = { ok: false, name: null };
+    }
+    if (!r.ok) {
+      failed++;
+    } else {
+      lead.business.ownerChecked = true;
+      if (r.name) {
+        lead.business.ownerName = r.name;
+        if (lead.audit) lead.score = scoreLead(lead.business, lead.audit); // refresh openers w/ name
+        found++;
+      }
+    }
+    done++;
+    onProgress({ done, total: slice.length, found, failed });
+  });
+  store.save();
+  return { processed: slice.length, found, failed, remaining: Math.max(0, targets.length - slice.length) };
+}
+
 const needsVerify = (l) =>
   (l.presence === 'none' || l.presence === 'social_only') && !l.business?.websiteVerified;
 

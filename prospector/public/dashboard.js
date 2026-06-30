@@ -31,7 +31,29 @@ async function boot() {
   $('#rescoreBtn').addEventListener('click', rescoreAll);
   $('#emailBtn').addEventListener('click', findEmails);
   $('#verifyBtn').addEventListener('click', verifyWebsites);
+  $('#ownersBtn').addEventListener('click', findOwners);
   await refresh();
+}
+
+async function findOwners() {
+  const btn = $('#ownersBtn');
+  if (!META.searchReady) { alert('Add a Gemini (or Claude) key to .env and restart to find owner names.'); return; }
+  if (!confirm('Search the web for owner/principal names to personalize your outreach? Runs in batches of 100.')) return;
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = '👤 Finding…';
+  try {
+    const r = await fetch('/api/find-owners', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed');
+    btn.textContent = `✓ +${d.found} owners`;
+    if (d.remaining > 0) btn.title = `${d.remaining} leads left — click again`;
+    await refresh();
+    setTimeout(() => (btn.textContent = original), 2500);
+  } catch (e) {
+    btn.textContent = '✗ ' + (e.message || 'Failed'); setTimeout(() => (btn.textContent = original), 2500);
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 async function verifyWebsites() {
@@ -136,6 +158,7 @@ async function refresh() {
   if (state.view === 'tocall') leads = leads.filter((l) => st(l) === 'new');
   else if (state.view === 'called') leads = leads.filter((l) => st(l) === 'called');
   else if (state.view === 'noanswer') leads = leads.filter((l) => st(l) === 'no_answer');
+  else if (state.view === 'callback') leads = leads.filter((l) => st(l) === 'callback');
   // 'all' shows everything
   $('#resultCount').textContent = `${leads.length} lead${leads.length === 1 ? '' : 's'}`;
   renderLeads(leads);
@@ -148,6 +171,7 @@ function renderViewTabs(facets) {
     ['tocall', '📞 To Call', c.new || 0],
     ['called', '✅ Called', c.called || 0],
     ['noanswer', '📵 No Answer', c.no_answer || 0],
+    ['callback', '📅 Call Back', c.callback || 0],
     ['all', '📋 All', ''],
   ];
   $('#viewTabs').innerHTML = tabs
@@ -217,6 +241,14 @@ function renderLeads(leads) {
     await setStatus(b.dataset.id, b.dataset.status);
     refresh();
   }));
+  root.querySelectorAll('.savenote').forEach((b) => b.addEventListener('click', async () => {
+    const ta = root.querySelector(`.notesbox[data-id="${CSS.escape(b.dataset.id)}"]`);
+    b.disabled = true;
+    await fetch('/api/leads/' + encodeURIComponent(b.dataset.id), {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notes: ta.value }),
+    });
+    b.textContent = '✓ Saved'; setTimeout(() => { b.textContent = '💾 Save note'; b.disabled = false; }, 1500);
+  }));
 }
 
 function leadCard(l) {
@@ -225,7 +257,7 @@ function leadCard(l) {
   const problems = (a.problems || []).map((p) =>
     `<div class="problem"><span class="problem__sev sev${p.severity}"></span><div><b>${esc(p.label)}</b><span>${esc(p.detail || '')}</span></div></div>`
   ).join('');
-  const statusOpts = ['new', 'called', 'no_answer', 'interested', 'won', 'dead']
+  const statusOpts = ['new', 'called', 'no_answer', 'callback', 'interested', 'won', 'dead']
     .map((o) => `<option ${((l.status || 'new') === o) ? 'selected' : ''}>${o}</option>`).join('');
 
   // Call-tracking row buttons (based on the lead's current status)
@@ -234,9 +266,10 @@ function leadCard(l) {
   if (callStatus === 'new') {
     rowActions =
       `<button class="actbtn act-call" data-id="${esc(l.id)}" data-status="called" title="I called them">📞 Called</button>` +
-      `<button class="actbtn act-no" data-id="${esc(l.id)}" data-status="no_answer" title="They didn't answer">📵 No answer</button>`;
+      `<button class="actbtn act-no" data-id="${esc(l.id)}" data-status="no_answer" title="They didn't answer">📵 No answer</button>` +
+      `<button class="actbtn act-cb" data-id="${esc(l.id)}" data-status="callback" title="Call back later">📅 Later</button>`;
   } else {
-    const lbl = callStatus === 'called' ? '✅ Called' : callStatus === 'no_answer' ? '📵 No answer' : esc(callStatus);
+    const lbl = callStatus === 'called' ? '✅ Called' : callStatus === 'no_answer' ? '📵 No answer' : callStatus === 'callback' ? '📅 Call back' : esc(callStatus);
     rowActions =
       `<span class="statuslbl statuslbl--${esc(callStatus)}">${lbl}</span>` +
       `<button class="actbtn act-back" data-id="${esc(l.id)}" data-status="new" title="Move back to To-Call (undo)">↩</button>`;
@@ -291,6 +324,7 @@ function leadCard(l) {
   facts.push(['Category', `${esc(b.categoryLabel || b.category || '—')}${b.tier ? ` · ${b.tier} tier` : ''}`]);
   if (b.avgTicketUsd) facts.push(['Typical job value', `~${usd(b.avgTicketUsd)}`]);
   facts.push(['Market', `${esc(b.city || '')}, ${esc(b.state || '')}${b.metroPopulation ? ` · metro ~${Number(b.metroPopulation).toLocaleString()}` : ''}`]);
+  if (b.topCompetitor?.name) facts.push(['Top competitor', `${esc(b.topCompetitor.name)} — ${b.topCompetitor.reviewCount ?? '?'} reviews`]);
   facts.push(['Est. opportunity', `${usd(s.opportunityUsd)}/mo · ~${s.estMonthlyLeads ?? '?'} online leads/mo`]);
   if (b.businessStatus && b.businessStatus !== 'OPERATIONAL') facts.push(['Status', esc(b.businessStatus)]);
   if (b.priceLevel != null && priceMap[b.priceLevel]) facts.push(['Price level', priceMap[b.priceLevel]]);
@@ -348,6 +382,7 @@ function leadCard(l) {
         </div>
         <div class="detail__side">
           <h4 class="detail__h">Contact</h4>
+          <div class="kv">👤 ${b.ownerName ? `<b>${esc(b.ownerName)}</b>` : '<span class="muted">owner not found yet</span>'}</div>
           <div class="kv">📞 ${esc(b.phone || '—')}</div>
           <div class="kv">✉️ ${b.email ? `<a href="mailto:${esc(b.email)}">${esc(b.email)}</a>` : '<span class="muted">no email found — use phone</span>'}</div>
           <div class="kv">🌐 ${site}</div>
@@ -370,6 +405,12 @@ function leadCard(l) {
         <div class="openers">${openersHtml}</div>
       </div>
       <div class="tabpane" data-pane="script" hidden>${scriptHtml}</div>
+
+      <div class="notes">
+        <h4 class="detail__h" style="margin-top:18px">Notes</h4>
+        <textarea class="notesbox" data-id="${esc(l.id)}" placeholder="Jot what they said on the call, follow-up dates, etc.">${esc(l.notes || '')}</textarea>
+        <button class="btn btn--ghost savenote" data-id="${esc(l.id)}">💾 Save note</button>
+      </div>
 
       <div class="detail__actions">
         ${b.website ? `<a class="linkbtn" href="https://pagespeed.web.dev/report?url=${encodeURIComponent(b.website)}" target="_blank" rel="noopener">Run PageSpeed ↗</a>` : ''}
