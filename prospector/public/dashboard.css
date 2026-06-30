@@ -131,6 +131,20 @@ select:focus, input:focus { border-color: var(--purple); }
 .opener .pitch { margin-top: 0; background: var(--ink-2); }
 .opener .copybtn { padding: 5px 12px; font-size: 12px; }
 @media (max-width: 880px) { .openers { grid-template-columns: 1fr; } }
+.tabs { display: flex; gap: 8px; margin: 18px 0 12px; border-bottom: 1px solid var(--line); }
+.tab { background: none; border: none; border-bottom: 2px solid transparent; color: var(--muted);
+  font-weight: 700; font-size: 13px; padding: 8px 12px; cursor: pointer; font-family: inherit; }
+.tab:hover { color: var(--text); }
+.tab.active { color: #fff; border-bottom-color: var(--red); }
+.hint-line { font-size: 12px; color: var(--muted); margin: 6px 0 8px; }
+.hooks { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px; }
+.hook { background: rgba(255,255,255,.02); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; }
+.hook__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.hook__label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--red-2); }
+.hook__text { font-size: 13px; line-height: 1.5; }
+.hook .copybtn, .opener .copybtn { padding: 4px 10px; font-size: 12px; }
+.pitch.script { max-height: 520px; overflow-y: auto; line-height: 1.6; }
+@media (max-width: 880px) { .hooks { grid-template-columns: 1fr; } }
 .detail__actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; align-items: center; }
 .detail__actions a.linkbtn { font-size: 13px; color: var(--blue); border: 1px solid var(--line); padding: 7px 12px; border-radius: 999px; }
 .detail__actions a.linkbtn:hover { border-color: var(--blue); }

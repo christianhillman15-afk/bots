@@ -66,6 +66,8 @@ export function scoreLead(business, audit) {
   const opportunityUsd = clamp(round((lostJobs * effectiveTicket) / 100) * 100, 0, 50000);
 
   const openers = buildOpeners(business, audit, { opportunityUsd, estMonthlyLeads });
+  const hooks = buildHooks(business, audit);
+  const script = buildScript(business, audit, { opportunityUsd });
 
   const tier =
     value >= 75 ? 'hot' : value >= 58 ? 'warm' : value >= 40 ? 'cool' : 'cold';
@@ -90,6 +92,8 @@ export function scoreLead(business, audit) {
     opportunityUsd,
     reasons: buildReasons(business, audit, { affordability, market, reviews }),
     openers,
+    hooks,
+    script,
     pitch: openers[0]?.text || '', // primary opener, kept for CSV/back-compat
   };
 }
@@ -195,4 +199,65 @@ function buildOpeners(business, audit, { opportunityUsd, estMonthlyLeads }) {
     { channel: 'sms', label: '💬 Text message', text: sms },
     { channel: 'video', label: '🎬 Loom / DM video hook', text: videoHook },
   ];
+}
+
+/* A few alternative one-line openers so the rep can pick the angle that fits. */
+function buildHooks(business, audit) {
+  const name = business.name || 'there';
+  const cat = (business.categoryLabel || 'business').toLowerCase();
+  const cityPhrase = business.city ? ` in ${business.city}` : '';
+  const reviews = business.reviewCount || 0;
+  const rating = business.rating ? `${business.rating}★` : 'your reviews';
+  const topProblem = audit.problems?.[0]?.label?.toLowerCase() || 'a few issues';
+  let problem;
+  if (audit.presence === 'none') problem = `I couldn't find a website for you anywhere`;
+  else if (audit.presence === 'social_only') problem = `the only thing online for you is a social page`;
+  else if (audit.presence === 'broken') problem = `your website looks like it's down right now`;
+  else problem = `I spotted ${topProblem} on your site`;
+
+  return [
+    { label: 'Curiosity', text: `Hey ${name}, quick one — are you still taking on new ${cat} work${cityPhrase}? Reason I ask: ${problem}, and I figured you'd want to know.` },
+    { label: 'Honest cold call', text: `Hi ${name}, I'll be upfront — this is a cold call, but a relevant one. I help ${cat}${cityPhrase} get more calls online, and ${problem}. Can I take 30 seconds to explain why I reached out?` },
+    { label: 'Compliment-first', text: `Hey ${name}, honestly impressed — ${reviews} reviews at ${rating} puts you among the best ${cat}${cityPhrase}. That's exactly why I'm calling: ${problem}, and it's costing you customers who never get to see how good you are.` },
+    { label: 'Problem-first', text: `Hi ${name}, I'll keep it quick — ${problem}, and for a shop with your reputation that's leaking real money every week. Mind if I show you what I mean?` },
+  ];
+}
+
+/* A complete, structured cold-call script the rep can read top to bottom. */
+function buildScript(business, audit, { opportunityUsd }) {
+  const name = business.name || 'there';
+  const cat = (business.categoryLabel || 'business').toLowerCase();
+  const cityPhrase = business.city ? ` in ${business.city}, ${business.state || ''}`.trimEnd() : '';
+  const reviews = business.reviewCount || 0;
+  const rating = business.rating ? `${business.rating}★` : 'strong reviews';
+  const topProblem = audit.problems?.[0]?.label?.toLowerCase() || 'a few issues';
+  let problemLong;
+  if (audit.presence === 'none') problemLong = `you don't have a website at all — just your Google listing`;
+  else if (audit.presence === 'social_only') problemLong = `the only web presence you have is a social page you don't own or control`;
+  else if (audit.presence === 'broken') problemLong = `your website is currently down or broken (${topProblem})`;
+  else problemLong = `your website has ${topProblem} that's quietly costing you customers`;
+  const costLine =
+    opportunityUsd >= 500
+      ? `By my rough math that's around ${usd(opportunityUsd)} a month in jobs going to competitors who just show up better online.`
+      : `That's sending business to competitors who simply show up better online.`;
+
+  return [
+    `▸ OPENING\n"Hi, is this ${name}? Hey ${name}, my name's [your name] with Oxsome — we're a web & marketing company up in Minnesota. Did I catch you at an okay time for 60 seconds? I promise to be quick."\n(If "I'm busy" → "Totally get it — 30 seconds, and if it's not relevant I'll let you go. Fair?")`,
+
+    `▸ THE REASON FOR THE CALL (HOOK)\n"So the reason I'm calling specifically — I was looking at ${cat}${cityPhrase} and noticed ${problemLong}. And with ${reviews} reviews at ${rating}, you're clearly one of the better shops around, which is exactly why it jumped out at me. ${costLine}"`,
+
+    `▸ CREDIBILITY\n"Quick background so you know I'm legit — Oxsome has built sites for over 500 small businesses, and we've been named Minnesota's Best Web Designer three years running. We work with a lot of ${cat} and home-service companies just like you."`,
+
+    `▸ DISCOVERY QUESTIONS (let them talk)\n• "Right now, where do most of your new customers come from — word of mouth, Google, something else?"\n• "Have you ever had a real website, or run any Google Ads before?"\n• "If I could get your phone ringing with more ${cat} jobs, do you have the capacity to take them on?"`,
+
+    `▸ THE PITCH\n"Here's what we do, in plain English: we build you a brand-new, modern website at ZERO dollars down. Then our AI runs your SEO, your Google Ads, and your social media all from one place — so instead of a website that just sits there, you get one that actually brings in calls and booked jobs. It's a simple monthly rate, and you stay only as long as it's making you money."`,
+
+    `▸ THE CLOSE (book the next step)\n"I don't want to take more of your time on the phone. What I'd love to do is record you a free 3-minute video showing exactly what I'd fix first and what it'd look like — no charge, no obligation. What's the best email or cell to send that to?"\n(Then: "Perfect — and if it makes sense after you watch it, we hop on a quick 15-minute call. Sound fair?")`,
+
+    `▸ COMMON OBJECTIONS\n• "I already have a website / a guy." → "Love that — most sites we take over were quietly losing the owner calls. I'll still send the free teardown; if yours is already crushing it, you get a free second opinion."\n• "I'm too busy / not interested." → "Completely understand — that's the point. You run the business, we handle the marketing. Can I just send the free video and you look when you have a sec?"\n• "How much is it?" → "Plans start around $750/month with $0 down to build — but I don't want to talk price until I show you what we'd do and what it's worth. Fair?"\n• "Just send me info." → "Will do — what's the best email? I'll send a personalized 3-minute teardown, not a generic brochure."`,
+
+    `▸ VOICEMAIL (if no answer)\n"Hi ${name}, this is [your name] with Oxsome — we build websites and run marketing for ${cat}${cityPhrase}. I noticed ${problemLong} and put together a quick free teardown for you. Give me a call back at [your number], or I'll try you again. Thanks!"`,
+
+    `▸ FOLLOW-UP TEXT (same day)\n"Hi ${name}, [your name] with Oxsome here — just left you a voicemail. I made a free 3-min video on your online presence (starting with ${topProblem}). Want me to send it? No pitch, just the teardown."`,
+  ].join('\n\n');
 }

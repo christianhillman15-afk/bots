@@ -106,6 +106,11 @@ function renderLeads(leads) {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: sel.value }),
     });
   }));
+  root.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => {
+    const detail = t.closest('.lead__detail');
+    detail.querySelectorAll('.tab').forEach((x) => x.classList.toggle('active', x === t));
+    detail.querySelectorAll('.tabpane').forEach((p) => (p.hidden = p.dataset.pane !== t.dataset.tab));
+  }));
 }
 
 function leadCard(l) {
@@ -136,6 +141,28 @@ function leadCard(l) {
       </div>
       <div class="pitch">${esc(o.text).replace(/\n/g, '<br>')}</div>
     </div>`).join('');
+
+  // Alternative one-line opening hooks (new richer openers)
+  const hooks = s.hooks || [];
+  const hooksHtml = hooks.length ? `
+    <div class="hint-line">Alternative opening lines — pick the angle that fits:</div>
+    <div class="hooks">
+      ${hooks.map((h) => `
+        <div class="hook">
+          <div class="hook__top">
+            <span class="hook__label">${esc(h.label)}</span>
+            <button class="btn btn--ghost copybtn" data-copy="${esc(h.text)}">⧉ Copy</button>
+          </div>
+          <div class="hook__text">${esc(h.text)}</div>
+        </div>`).join('')}
+    </div>` : '';
+
+  // Full call script (new tab)
+  const scriptHtml = s.script
+    ? `<div class="opener__head"><span class="opener__label">📋 Full cold-call script</span>
+         <button class="btn btn--ghost copybtn" data-copy="${esc(s.script)}">⧉ Copy full script</button></div>
+       <div class="pitch script">${esc(s.script).replace(/\n/g, '<br>')}</div>`
+    : `<div class="muted" style="font-size:13px">Re-scan this lead to generate the full call script.</div>`;
 
   // Business + audit facts for the profile
   const priceMap = ['Free', '$', '$$', '$$$', '$$$$'];
@@ -212,8 +239,16 @@ function leadCard(l) {
         </div>
       </div>
 
-      <h4 class="detail__h" style="margin-top:18px">Outreach openers — pick a channel, copy &amp; send</h4>
-      <div class="openers">${openersHtml}</div>
+      <div class="tabs">
+        <button class="tab active" data-tab="openers">✍️ Suggested openers</button>
+        <button class="tab" data-tab="script">📋 Full call script</button>
+      </div>
+      <div class="tabpane" data-pane="openers">
+        ${hooksHtml}
+        <div class="hint-line">Or send a ready-made message — pick a channel &amp; copy:</div>
+        <div class="openers">${openersHtml}</div>
+      </div>
+      <div class="tabpane" data-pane="script" hidden>${scriptHtml}</div>
 
       <div class="detail__actions">
         ${b.website ? `<a class="linkbtn" href="https://pagespeed.web.dev/report?url=${encodeURIComponent(b.website)}" target="_blank" rel="noopener">Run PageSpeed ↗</a>` : ''}
