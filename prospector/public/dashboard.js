@@ -32,7 +32,27 @@ async function boot() {
   $('#emailBtn').addEventListener('click', findEmails);
   $('#verifyBtn').addEventListener('click', verifyWebsites);
   $('#ownersBtn').addEventListener('click', findOwners);
+  await renderUsage();
   await refresh();
+}
+
+/** Show today's web-search usage vs the safety cap so the user knows they're free. */
+async function renderUsage() {
+  const el = $('#usageBadge');
+  if (!el) return;
+  try { META.searchUsage = (await fetch('/api/meta').then((r) => r.json())).searchUsage; } catch {}
+  const u = META.searchUsage;
+  if (!META.searchReady || !u) { el.hidden = true; return; }
+  el.hidden = false;
+  if (u.cap) {
+    el.textContent = `🔎 ${u.used}/${u.cap} today`;
+    el.title = `Web searches used today: ${u.used} of your ${u.cap}/day safety cap. Resets each day. While under the free limit you can't be billed.`;
+    el.classList.toggle('usage--full', u.remaining === 0);
+  } else {
+    el.textContent = `🔎 ${u.used} today`;
+    el.title = 'Web searches used today (no daily cap set).';
+    el.classList.remove('usage--full');
+  }
 }
 
 async function findOwners() {
@@ -47,6 +67,7 @@ async function findOwners() {
     if (!r.ok) throw new Error(d.error || 'Failed');
     btn.textContent = `✓ +${d.found} owners`;
     if (d.remaining > 0) btn.title = `${d.remaining} leads left — click again`;
+    await renderUsage();
     await refresh();
     setTimeout(() => (btn.textContent = original), 2500);
   } catch (e) {
@@ -82,6 +103,7 @@ async function verifyWebsites() {
       }
     }
     btn.textContent = `✓ ${found} had sites · ${confirmed} confirmed no-site`;
+    await renderUsage();
     await refresh();
     setTimeout(() => (btn.textContent = original), 4000);
   } catch (e) {

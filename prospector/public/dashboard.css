@@ -35,6 +35,8 @@ h1,h2,h3,.brand__text { font-family: 'Space Grotesk','Inter',sans-serif; font-we
 .badge { font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 999px; letter-spacing: .06em; }
 .badge--demo { background: rgba(255,176,32,.15); color: var(--amber); border: 1px solid rgba(255,176,32,.4); }
 .badge--live { background: rgba(43,212,125,.15); color: var(--green); border: 1px solid rgba(43,212,125,.4); }
+.usage { font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 999px; color: var(--green); background: rgba(43,212,125,.12); border: 1px solid rgba(43,212,125,.35); white-space: nowrap; }
+.usage--full { color: var(--amber); background: rgba(255,176,32,.14); border-color: rgba(255,176,32,.45); }
 
 .wrap { max-width: 1280px; margin: 0 auto; padding: 26px; }
 

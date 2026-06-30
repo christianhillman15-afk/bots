@@ -1,9 +1,51 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { config } from '../config.js';
 import { mapLimit } from '../util.js';
 import { auditBusiness, isLead } from '../audit/audit.js';
 import { scoreLead } from '../scoring/leadScore.js';
 import { stripAudit } from '../scan.js';
 import { STRICT_OUTREACH_STATES } from '../data/metros.js';
+
+/*
+ * Daily free-tier guard. Every web search (website-verify + owner lookup) goes
+ * through one counter persisted to disk. Once we hit config.searchDailyCap in a
+ * given day we stop making calls and resume tomorrow — so we can never spill
+ * past the provider's free daily allowance and get billed. 0 = no cap.
+ */
+const usageFile = () => join(config.dataDir, 'search-usage.json');
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+function readUsage() {
+  try {
+    const u = JSON.parse(readFileSync(usageFile(), 'utf8'));
+    if (u && u.date === today()) return { date: u.date, count: Number(u.count) || 0 };
+  } catch {
+    /* missing/old file -> fresh day */
+  }
+  return { date: today(), count: 0 };
+}
+/** Reserve one search if we're under the cap. Returns true if allowed. */
+function reserveSearch() {
+  const cap = Number(config.searchDailyCap) || 0;
+  const u = readUsage();
+  if (cap > 0 && u.count >= cap) return false;
+  u.count += 1;
+  try {
+    writeFileSync(usageFile(), JSON.stringify(u));
+  } catch {
+    /* if we can't persist, fail safe by NOT allowing the call */
+    return false;
+  }
+  return true;
+}
+/** Public: today's usage for the dashboard ({ used, cap, remaining }). */
+export function searchUsage() {
+  const cap = Number(config.searchDailyCap) || 0;
+  const used = readUsage().count;
+  return { used, cap, remaining: cap > 0 ? Math.max(0, cap - used) : null };
+}
 
 /*
  * Verifies "no website" / social-only leads by actually searching Google
@@ -131,9 +173,11 @@ export const searchReady = () => Boolean(config.anthropicApiKey || config.gemini
 
 /** Find a business's real website via Claude (preferred) or Gemini. */
 export async function findWebsite(business) {
+  if (!config.anthropicApiKey && !config.geminiApiKey)
+    throw new Error('No web-search key set (ANTHROPIC_API_KEY or GEMINI_API_KEY)');
+  if (!reserveSearch()) return { ok: false, url: null, capped: true }; // daily cap hit
   if (config.anthropicApiKey) return findWebsiteClaude(business);
-  if (config.geminiApiKey) return findWebsiteGemini(business);
-  throw new Error('No web-search key set (ANTHROPIC_API_KEY or GEMINI_API_KEY)');
+  return findWebsiteGemini(business);
 }
 
 // ── Generic grounded search (returns raw text), used for owner lookup ───────
@@ -183,9 +227,10 @@ async function runSearchGemini(prompt) {
   }
 }
 function runSearch(prompt) {
+  if (!config.anthropicApiKey && !config.geminiApiKey) throw new Error('No web-search key set');
+  if (!reserveSearch()) return Promise.resolve({ ok: false, text: '', capped: true }); // daily cap hit
   if (config.anthropicApiKey) return runSearchClaude(prompt);
-  if (config.geminiApiKey) return runSearchGemini(prompt);
-  throw new Error('No web-search key set');
+  return runSearchGemini(prompt);
 }
 
 function parseName(text) {

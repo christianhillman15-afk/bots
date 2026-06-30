@@ -46,6 +46,12 @@ export const config = {
   anthropicModel: process.env.ANTHROPIC_MODEL?.trim() || 'claude-haiku-4-5',
   geminiApiKey: process.env.GEMINI_API_KEY?.trim() || '',
   geminiModel: process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash',
+  // Hard cap on web searches per day (website-verify + owner lookup combined).
+  // Keeps usage safely under the provider's free daily allowance so you're
+  // never billed. Gemini 2.5 free grounding = 1,500/day, so 1,400 leaves room.
+  // Set SEARCH_DAILY_CAP=0 to disable the cap.
+  searchDailyCap:
+    process.env.SEARCH_DAILY_CAP !== undefined ? Number(process.env.SEARCH_DAILY_CAP) : 1400,
 };
 
 /** True when we have a real Places key; otherwise we run on demo data. */

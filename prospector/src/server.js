@@ -9,7 +9,7 @@ import { CATEGORIES, findCategory, defaultCategories } from './data/categories.j
 import { toCsv } from './util.js';
 import { scoreLead } from './scoring/leadScore.js';
 import { enrichEmails } from './enrich/emailFinder.js';
-import { verifyMissingWebsites, enrichOwners, searchReady } from './enrich/websiteFinder.js';
+import { verifyMissingWebsites, enrichOwners, searchReady, searchUsage } from './enrich/websiteFinder.js';
 import { createScheduler } from './scheduler.js';
 import { log } from './logger.js';
 
@@ -116,6 +116,7 @@ export function startServer() {
       live: isLive(),
       provider: isLive() ? 'google-places' : 'demo',
       searchReady: searchReady(),
+      searchUsage: searchUsage(),
       auditMode: config.auditMode,
       categories: CATEGORIES.map((c) => ({ key: c.key, label: c.label, tier: c.tier })),
       metros: METROS.map((m) => ({ city: m.city, state: m.state, metroPopulation: m.metroPopulation })),
