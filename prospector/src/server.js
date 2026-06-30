@@ -7,6 +7,7 @@ import { writeCsv } from './export.js';
 import { METROS, topMetros, findMetro } from './data/metros.js';
 import { CATEGORIES, findCategory, defaultCategories } from './data/categories.js';
 import { toCsv } from './util.js';
+import { scoreLead } from './scoring/leadScore.js';
 import { createScheduler } from './scheduler.js';
 import { log } from './logger.js';
 
@@ -125,6 +126,19 @@ export function startServer() {
 
   // Auto-pilot status
   app.get('/api/auto', (_req, res) => res.json(scheduler.status()));
+
+  // Re-score every stored lead in place (regenerate openers + full script).
+  // No API calls; preserves status/notes/first-seen.
+  app.post('/api/rescore', (_req, res) => {
+    let n = 0;
+    for (const lead of store.all()) {
+      if (!lead.business || !lead.audit) continue;
+      lead.score = scoreLead(lead.business, lead.audit);
+      n++;
+    }
+    store.save();
+    res.json({ ok: true, rescored: n });
+  });
 
   // Filtered leads + facet counts
   app.get('/api/leads', (req, res) => {

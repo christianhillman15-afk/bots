@@ -6,6 +6,7 @@ import { METROS, topMetros, findMetro } from '../src/data/metros.js';
 import { CATEGORIES, findCategory, defaultCategories } from '../src/data/categories.js';
 import { startServer } from '../src/server.js';
 import { writeCsv } from '../src/export.js';
+import { scoreLead } from '../src/scoring/leadScore.js';
 import { log, color } from '../src/logger.js';
 import { usd } from '../src/util.js';
 
@@ -180,6 +181,22 @@ function cmdServe(opts) {
   startServer();
 }
 
+// Re-score every stored lead in place — regenerates openers + full call script
+// from saved data. No API calls; keeps status, notes, and first-seen dates.
+function cmdRescore() {
+  const store = new LeadStore();
+  const all = store.all();
+  let n = 0;
+  for (const lead of all) {
+    if (!lead.business || !lead.audit) continue;
+    lead.score = scoreLead(lead.business, lead.audit);
+    lead.updatedAt = new Date().toISOString();
+    n++;
+  }
+  store.save();
+  log.ok(`Re-scored ${n} of ${all.length} leads — every one now has the latest openers + full call script.`);
+}
+
 // ── pretty printers ───────────────────────────────────────────────────────
 function printPresence(byPresence) {
   const labels = {
@@ -231,6 +248,7 @@ ${color.bold('Commands:')}
   list      Show stored leads (filterable)
   stats     Summary of the lead pipeline
   export    Write leads to CSV for outreach
+  rescore   Regenerate openers + full script on ALL stored leads (no API calls)
   serve     Launch the web dashboard
 
 ${color.bold('scan options:')}
@@ -268,6 +286,7 @@ const run = {
   stats: () => cmdStats(opts),
   export: () => cmdExport(opts),
   serve: () => cmdServe(opts),
+  rescore: () => cmdRescore(opts),
 };
 (async () => {
   if (!cmd || opts.help || cmd === 'help') return help();

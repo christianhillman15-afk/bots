@@ -20,7 +20,27 @@ async function boot() {
   wireFilters();
   $('#scanBtn').addEventListener('click', runScan);
   $('#exportBtn').addEventListener('click', () => { window.location = '/api/export.csv?' + qs(); });
+  $('#rescoreBtn').addEventListener('click', rescoreAll);
   await refresh();
+}
+
+async function rescoreAll() {
+  const btn = $('#rescoreBtn');
+  if (!confirm('Regenerate the openers + full call script on ALL existing leads? This keeps their status and notes.')) return;
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = '↻ Refreshing…';
+  try {
+    const r = await fetch('/api/rescore', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed');
+    btn.textContent = `✓ ${d.rescored} updated`;
+    await refresh();
+    setTimeout(() => (btn.textContent = original), 2000);
+  } catch (e) {
+    btn.textContent = '✗ Failed'; setTimeout(() => (btn.textContent = original), 2000);
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 function wireFilters() {
