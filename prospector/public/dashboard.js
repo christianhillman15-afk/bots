@@ -5,7 +5,14 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 const safeUrl = (u) => (/^https?:\/\//i.test(String(u || '')) ? esc(u) : '');
 
 let META = {};
-const state = { tier: '', presence: '', state: '', category: '', sort: 'score', search: '' };
+const state = { tier: '', presence: '', state: '', category: '', sort: 'score', search: '', view: 'tocall' };
+
+/** Update a lead's call status (called / no_answer / new). */
+function setStatus(id, status) {
+  return fetch('/api/leads/' + encodeURIComponent(id), {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }),
+  });
+}
 
 async function boot() {
   META = await fetch('/api/meta').then((r) => r.json());
@@ -121,11 +128,36 @@ async function refresh() {
     }
     if (state.state) $('#fState').value = state.state;
   }
+  renderViewTabs(data.facets);
   let leads = data.leads;
   if (state.tier) leads = leads.filter((l) => l.score?.tier === state.tier);
+  // Call-tracking view filter
+  const st = (l) => l.status || 'new';
+  if (state.view === 'tocall') leads = leads.filter((l) => st(l) === 'new');
+  else if (state.view === 'called') leads = leads.filter((l) => st(l) === 'called');
+  else if (state.view === 'noanswer') leads = leads.filter((l) => st(l) === 'no_answer');
+  // 'all' shows everything
   $('#resultCount').textContent = `${leads.length} lead${leads.length === 1 ? '' : 's'}`;
   renderLeads(leads);
   renderAuto();
+}
+
+function renderViewTabs(facets) {
+  const c = facets?.status || {};
+  const tabs = [
+    ['tocall', '📞 To Call', c.new || 0],
+    ['called', '✅ Called', c.called || 0],
+    ['noanswer', '📵 No Answer', c.no_answer || 0],
+    ['all', '📋 All', ''],
+  ];
+  $('#viewTabs').innerHTML = tabs
+    .map(([key, label, count]) =>
+      `<button class="viewtab ${state.view === key ? 'active' : ''}" data-view="${key}">${label}${count !== '' ? ` <span class="vcount">${count}</span>` : ''}</button>`
+    )
+    .join('');
+  $('#viewTabs').querySelectorAll('.viewtab').forEach((b) =>
+    b.addEventListener('click', () => { state.view = b.dataset.view; refresh(); })
+  );
 }
 
 async function renderAuto() {
@@ -179,6 +211,12 @@ function renderLeads(leads) {
     detail.querySelectorAll('.tab').forEach((x) => x.classList.toggle('active', x === t));
     detail.querySelectorAll('.tabpane').forEach((p) => (p.hidden = p.dataset.pane !== t.dataset.tab));
   }));
+  root.querySelectorAll('.actbtn').forEach((b) => b.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    b.disabled = true;
+    await setStatus(b.dataset.id, b.dataset.status);
+    refresh();
+  }));
 }
 
 function leadCard(l) {
@@ -187,8 +225,22 @@ function leadCard(l) {
   const problems = (a.problems || []).map((p) =>
     `<div class="problem"><span class="problem__sev sev${p.severity}"></span><div><b>${esc(p.label)}</b><span>${esc(p.detail || '')}</span></div></div>`
   ).join('');
-  const statusOpts = ['new', 'contacted', 'interested', 'won', 'dead']
+  const statusOpts = ['new', 'called', 'no_answer', 'interested', 'won', 'dead']
     .map((o) => `<option ${((l.status || 'new') === o) ? 'selected' : ''}>${o}</option>`).join('');
+
+  // Call-tracking row buttons (based on the lead's current status)
+  const callStatus = l.status || 'new';
+  let rowActions;
+  if (callStatus === 'new') {
+    rowActions =
+      `<button class="actbtn act-call" data-id="${esc(l.id)}" data-status="called" title="I called them">📞 Called</button>` +
+      `<button class="actbtn act-no" data-id="${esc(l.id)}" data-status="no_answer" title="They didn't answer">📵 No answer</button>`;
+  } else {
+    const lbl = callStatus === 'called' ? '✅ Called' : callStatus === 'no_answer' ? '📵 No answer' : esc(callStatus);
+    rowActions =
+      `<span class="statuslbl statuslbl--${esc(callStatus)}">${lbl}</span>` +
+      `<button class="actbtn act-back" data-id="${esc(l.id)}" data-status="new" title="Move back to To-Call (undo)">↩</button>`;
+  }
   const siteHref = safeUrl(b.website);
   const site = b.website
     ? (siteHref
@@ -283,7 +335,7 @@ function leadCard(l) {
       </div>
       <div class="lead__revs hide-sm" title="Google reviews — our stand-in for how busy/established (and able to pay) they are."><span class="n">${b.reviewCount ?? 0}</span> ★${b.rating ? ' ' + b.rating : ''}<div class="muted" style="font-size:11px">reviews</div></div>
       <div class="lead__opp hide-sm" title="Rough estimate of money they're leaving on the table each month from their web problem. Say 'around $X' — it's an estimate, not exact."><span class="n">${usd(s.opportunityUsd)}</span><div class="l">est. lost /mo</div></div>
-      <div class="chevron">›</div>
+      <div class="lead__end">${rowActions}<span class="chevron">›</span></div>
     </div>
     <div class="lead__detail">
       <div class="detail__grid">
