@@ -244,6 +244,35 @@ export function startServer() {
     res.send(toCsv(leads, cols));
   });
 
+  // Instantly-ready export: only leads that HAVE an email, with clean columns
+  // (+ a personalization "icebreaker") ready to upload to Instantly/Smartlead.
+  app.get('/api/export-instantly.csv', (req, res) => {
+    const leads = store
+      .query({
+        minScore: Number(req.query.minScore) || 0,
+        state: req.query.state || undefined,
+        category: req.query.category || undefined,
+        sort: 'score',
+      })
+      .filter((l) => l.business?.email);
+    const cols = [
+      { header: 'email', get: (l) => l.business.email },
+      { header: 'first_name', get: () => '' },
+      { header: 'company_name', get: (l) => l.business?.name },
+      { header: 'phone', get: (l) => l.business?.phone },
+      { header: 'website', get: (l) => l.business?.website },
+      { header: 'city', get: (l) => l.business?.city },
+      { header: 'state', get: (l) => l.business?.state },
+      { header: 'problem', get: (l) => l.audit?.problems?.[0]?.label },
+      { header: 'est_opportunity_mo', get: (l) => l.score?.opportunityUsd },
+      { header: 'icebreaker', get: (l) => icebreaker(l) },
+      { header: 'full_email', get: (l) => csvOpener(l, 'email') },
+    ];
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="oxsome-leads-instantly.csv"');
+    res.send(toCsv(leads, cols));
+  });
+
   // 0.0.0.0 so it's reachable when hosted (containers/PaaS), not just locally.
   app.listen(config.port, '0.0.0.0', () => {
     log.title('OXSOME PROSPECTOR — dashboard');
@@ -300,6 +329,17 @@ const inc = (obj, k) => {
 function csvOpener(l, channel) {
   const found = (l.score?.openers || []).find((o) => o.channel === channel);
   return found?.text || (channel === 'call' ? l.score?.pitch || '' : '');
+}
+
+/** A short, personalized first line for Instantly's {{icebreaker}} variable. */
+function icebreaker(l) {
+  const email = (l.score?.openers || []).find((o) => o.channel === 'email')?.text || '';
+  if (email) {
+    // email = "Subject: ...\n\nHi {name},\n\n<first body paragraph>\n\n..."
+    const para = email.split('\n\n')[2];
+    if (para && para.trim()) return para.trim();
+  }
+  return l.score?.pitch || '';
 }
 
 function summary(all) {

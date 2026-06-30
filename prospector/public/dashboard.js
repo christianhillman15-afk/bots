@@ -20,6 +20,7 @@ async function boot() {
   wireFilters();
   $('#scanBtn').addEventListener('click', runScan);
   $('#exportBtn').addEventListener('click', () => { window.location = '/api/export.csv?' + qs(); });
+  $('#instantlyBtn').addEventListener('click', () => { window.location = '/api/export-instantly.csv?' + qs(); });
   $('#rescoreBtn').addEventListener('click', rescoreAll);
   $('#emailBtn').addEventListener('click', findEmails);
   await refresh();
