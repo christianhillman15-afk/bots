@@ -1,5 +1,5 @@
 import express from 'express';
-import { timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual, createHmac } from 'node:crypto';
 import { config, isLive } from './config.js';
 import { LeadStore } from './store.js';
 import { runScan } from './scan.js';
@@ -17,17 +17,55 @@ function safeEqual(a, b) {
   return timingSafeEqual(ba, bb);
 }
 
-/* HTTP Basic Auth — only enforced when DASHBOARD_PASSWORD is configured. */
-function basicAuth(req, res, next) {
-  if (!config.dashboardPassword) return next(); // open in private/local use
-  const [scheme, encoded] = (req.headers.authorization || '').split(' ');
-  if (scheme === 'Basic' && encoded) {
-    const [user, pass] = Buffer.from(encoded, 'base64').toString().split(':');
-    if (safeEqual(user, config.dashboardUser) && safeEqual(pass, config.dashboardPassword)) {
-      return next();
-    }
+/* Password-only login (no username). We set a stateless cookie = HMAC of a
+ * constant keyed by the password; changing the password invalidates it. */
+function authToken() {
+  return createHmac('sha256', config.dashboardPassword || 'none').update('surge-prospector-v1').digest('hex');
+}
+function parseCookies(req) {
+  const out = {};
+  for (const part of (req.headers.cookie || '').split(';')) {
+    const i = part.indexOf('=');
+    if (i > -1) out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
   }
-  res.set('WWW-Authenticate', 'Basic realm="SURGE Prospector"').status(401).send('Authentication required.');
+  return out;
+}
+function isAuthed(req) {
+  if (!config.dashboardPassword) return true; // open in private/local use
+  const tok = parseCookies(req).sp_auth;
+  return Boolean(tok) && safeEqual(tok, authToken());
+}
+function requireAuth(req, res, next) {
+  if (isAuthed(req)) return next();
+  if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Login required' });
+  return res.redirect('/login');
+}
+function loginPage(error = false) {
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SURGE Prospector — Login</title><style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    background:radial-gradient(1000px 500px at 70% -10%,rgba(139,61,255,.18),transparent 60%),#07080f;color:#e9ebf5}
+  .box{background:#0e1019;border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:34px 30px;width:320px;
+    text-align:center;box-shadow:0 24px 60px -20px rgba(0,0,0,.6)}
+  .mark{font-size:26px}h1{font-size:20px;margin:8px 0 2px;letter-spacing:-.02em;font-weight:800}
+  .sub{color:#9298b1;font-size:13px;margin-bottom:20px}
+  input{width:100%;box-sizing:border-box;background:#07080f;border:1px solid rgba(255,255,255,.12);
+    border-radius:10px;padding:12px 14px;color:#e9ebf5;font-size:15px;outline:none}
+  input:focus{border-color:#8b3dff}
+  button{width:100%;margin-top:12px;border:none;border-radius:999px;padding:12px;font-weight:700;font-size:15px;
+    color:#fff;cursor:pointer;background:linear-gradient(120deg,#ff2d4d,#8b3dff)}
+  .err{color:#ff5d76;font-size:13px;margin-top:12px}
+</style></head><body>
+<form class="box" method="POST" action="/login">
+  <div class="mark">⚡</div>
+  <h1>SUR<span style="color:#ff2d4d">GE</span> Prospector</h1>
+  <div class="sub">Enter your password to continue</div>
+  <input type="password" name="password" placeholder="Password" autofocus autocomplete="current-password"/>
+  <button type="submit">Unlock →</button>
+  ${error ? '<div class="err">Wrong password — try again.</div>' : ''}
+</form></body></html>`;
 }
 
 export function startServer() {
@@ -38,7 +76,28 @@ export function startServer() {
   // Health check for hosting platforms — must stay public (before auth).
   app.get('/healthz', (_req, res) => res.json({ ok: true, leads: store.size, live: isLive() }));
 
-  app.use(basicAuth); // everything below requires the password (if set)
+  // Password-only login page (no username).
+  app.get('/login', (req, res) => {
+    if (isAuthed(req)) return res.redirect('/');
+    res.type('html').send(loginPage(req.query.e === '1'));
+  });
+  app.post('/login', express.urlencoded({ extended: false }), (req, res) => {
+    if (!config.dashboardPassword || safeEqual(req.body.password || '', config.dashboardPassword)) {
+      res.cookie('sp_auth', authToken(), {
+        httpOnly: true,
+        sameSite: 'lax',
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      });
+      return res.redirect('/');
+    }
+    res.redirect('/login?e=1');
+  });
+  app.get('/logout', (_req, res) => {
+    res.clearCookie('sp_auth');
+    res.redirect('/login');
+  });
+
+  app.use(requireAuth); // everything below requires the password (if set)
   app.use(express.json());
   app.use(express.static(config.publicDir));
 
@@ -148,7 +207,7 @@ export function startServer() {
     log.title('SURGE PROSPECTOR — dashboard');
     log.ok(`http://localhost:${config.port}`);
     if (!isLive()) log.warn('DEMO MODE (no Places key). Scans use sample data.');
-    if (config.dashboardPassword) log.ok(`Login required (user: ${config.dashboardUser}).`);
+    if (config.dashboardPassword) log.ok('Password login required.');
     else log.warn('No DASHBOARD_PASSWORD set — dashboard is open. Set one before hosting publicly.');
     log.info(`${store.size} leads loaded · data in ${config.dataDir}`);
   });
