@@ -4,6 +4,8 @@ import { config } from './config.js';
 import { METROS } from './data/metros.js';
 import { CATEGORIES } from './data/categories.js';
 import { runScan } from './scan.js';
+import { verifyMissingWebsites, searchReady } from './enrich/websiteFinder.js';
+import { enrichEmails } from './enrich/emailFinder.js';
 import { log } from './logger.js';
 
 /**
@@ -73,6 +75,20 @@ export function createScheduler({ store, isBusy, setBusy }) {
           newLeads: stats.newLeads,
         };
         log.ok(`auto-scan: +${stats.newLeads} new (${stats.leads} leads / ${stats.found} businesses)`);
+
+        // Auto-clean + enrich: verify missing websites, then find emails.
+        if (config.autoEnrich) {
+          try {
+            if (searchReady()) {
+              const v = await verifyMissingWebsites({ store, limit: config.autoEnrichLimit });
+              if (v.foundSites || v.removedOk) log.ok(`auto-verify: ${v.foundSites} real sites found, ${v.removedOk} removed (had fine sites)`);
+            }
+            const e = await enrichEmails({ store, limit: config.autoEnrichLimit });
+            if (e.found) log.ok(`auto-emails: +${e.found} contact emails`);
+          } catch (err) {
+            log.warn(`auto-enrich skipped: ${err.message}`);
+          }
+        }
       } catch (err) {
         log.err(`auto-scan failed: ${err.message}`);
       } finally {
@@ -103,6 +119,7 @@ export function createScheduler({ store, isBusy, setBusy }) {
     const metro = METROS[metroIndex % METROS.length];
     return {
       enabled: config.autoScan,
+      autoEnrich: config.autoEnrich,
       intervalMin: config.autoScanIntervalMin,
       chunk: config.autoScanChunk,
       maxPerCity: config.autoScanMaxPerCity,

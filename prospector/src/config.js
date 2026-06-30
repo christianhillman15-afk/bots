@@ -33,6 +33,11 @@ export const config = {
   autoScanIntervalMin: Number(process.env.AUTO_SCAN_INTERVAL_MIN) || 180,
   autoScanChunk: Number(process.env.AUTO_SCAN_CHUNK) || 3, // categories per tick
   autoScanMaxPerCity: Number(process.env.AUTO_SCAN_MAX) || 20,
+  // After each auto-scan, also verify missing websites + find emails (ON by
+  // default; set AUTO_ENRICH=false to disable). autoEnrichLimit caps how many
+  // leads get enriched per tick to stay within free quotas.
+  autoEnrich: !/^(0|false|no|off)$/i.test(process.env.AUTO_ENRICH || ''),
+  autoEnrichLimit: Number(process.env.AUTO_ENRICH_LIMIT) || 40,
   // Website verification — searches the live web to catch real sites Google
   // Places didn't list, so "no website" leads are accurate. Works with EITHER
   // Claude (web search tool) or Gemini (Google Search grounding); Claude wins

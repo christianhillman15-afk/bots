@@ -138,7 +138,8 @@ async function renderAuto() {
       ? `Last: +${a.lastResult.newLeads} new from ${esc(a.lastResult.metro)}.`
       : 'Warming up…';
     const next = a.nextRunAt ? ` Next run ~${new Date(a.nextRunAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.` : '';
-    el.innerHTML = `🔄 <b>Auto-scan ON</b> — sweeping the US every ${a.intervalMin} min, now around <b>${esc(a.position?.metro || '')}</b>. ${last}${next}`;
+    const cleans = a.autoEnrich ? ' It auto-verifies websites &amp; finds emails too.' : '';
+    el.innerHTML = `🔄 <b>Auto-scan ON</b> — sweeping the US every ${a.intervalMin} min, now around <b>${esc(a.position?.metro || '')}</b>.${cleans} ${last}${next}`;
     el.hidden = false;
   } catch { el.hidden = true; }
 }
