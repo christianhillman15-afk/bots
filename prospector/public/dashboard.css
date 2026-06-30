@@ -54,6 +54,20 @@ h1,h2,h3,.brand__text { font-family: 'Space Grotesk','Inter',sans-serif; font-we
 .statcard--hot .statcard__num { background: var(--grad-red); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .statcard--opp .statcard__num { color: var(--green); }
 
+/* Cheat sheet */
+.cheat { background: linear-gradient(180deg, var(--ink-3), var(--ink-2)); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 4px 18px; margin-bottom: 22px; }
+.cheat summary { cursor: pointer; padding: 12px 0; font-weight: 700; font-size: 14px; color: var(--text); list-style: none; }
+.cheat summary::-webkit-details-marker { display: none; }
+.cheat summary::before { content: '▸ '; color: var(--red); }
+.cheat[open] summary::before { content: '▾ '; }
+.cheat__body { padding: 4px 0 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 26px; }
+.cheat__item b { font-size: 13px; }
+.cheat__item p { font-size: 13px; line-height: 1.55; color: var(--muted); margin-top: 4px; }
+.cheat__item i { color: var(--blue-2); }
+.cheat__note { grid-column: 1 / -1; font-size: 12px; color: var(--amber); border-top: 1px solid var(--line); padding-top: 12px; margin: 0; }
+@media (max-width: 880px) { .cheat__body { grid-template-columns: 1fr; } }
+
 /* Panel */
 .panel { background: linear-gradient(180deg, var(--ink-3), var(--ink-2)); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; margin-bottom: 22px; }
 .scanpanel__head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }

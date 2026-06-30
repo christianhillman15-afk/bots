@@ -98,13 +98,13 @@ async function renderAuto() {
 
 function renderStats(s) {
   const cards = [
-    { num: s.total, label: 'Total leads', cls: '' },
-    { num: s.byTier.hot, label: '🔥 Hot leads', cls: 'statcard--hot' },
-    { num: s.noWebsite, label: 'No real website', cls: '' },
-    { num: usd(s.opportunityUsd), label: 'Est. monthly opportunity', cls: 'statcard--opp' },
+    { num: s.total, label: 'Total leads', cls: '', tip: 'Every business found that has a website problem worth calling.' },
+    { num: s.byTier.hot, label: '🔥 Hot leads', cls: 'statcard--hot', tip: 'The best-fit leads — call these first.' },
+    { num: s.noWebsite, label: 'No real website', cls: '', tip: 'Businesses with no site at all or only a social page — your easiest pitch.' },
+    { num: usd(s.opportunityUsd), label: 'Est. monthly opportunity', cls: 'statcard--opp', tip: 'Rough total $/month your whole list is leaving on the table — your pipeline size, not one customer.' },
   ];
   $('#stats').innerHTML = cards.map((c) =>
-    `<div class="statcard ${c.cls}"><div class="statcard__num">${esc(c.num)}</div><div class="statcard__label">${c.label}</div></div>`
+    `<div class="statcard ${c.cls}" title="${esc(c.tip)}"><div class="statcard__num">${esc(c.num)}</div><div class="statcard__label">${c.label}</div></div>`
   ).join('');
 }
 
@@ -224,17 +224,17 @@ function leadCard(l) {
   return `
   <div class="lead">
     <div class="lead__row">
-      <div class="score score--${tier}"><span class="score__val">${s.value}</span><span class="score__emoji">${s.emoji}</span></div>
+      <div class="score score--${tier}" title="Fit score 0–100 (${s.label}). Higher = better lead. Blends their web problem, ability to pay, and market size."><span class="score__val">${s.value}</span><span class="score__emoji">${s.emoji}</span></div>
       <div>
         <div class="lead__name">${esc(b.name)}</div>
         <div class="lead__meta">
-          <span class="tag tag--${l.presence}">${esc(a.headline)}</span>
+          <span class="tag tag--${l.presence}" title="What's wrong with their web presence.">${esc(a.headline)}</span>
           <span>${esc(b.categoryLabel || b.category || '')}</span>
           <span>· ${esc(b.city || '')}, ${esc(b.state || '')}</span>
         </div>
       </div>
-      <div class="lead__revs hide-sm"><span class="n">${b.reviewCount ?? 0}</span> ★${b.rating ? ' ' + b.rating : ''}<div class="muted" style="font-size:11px">reviews</div></div>
-      <div class="lead__opp hide-sm"><span class="n">${usd(s.opportunityUsd)}</span><div class="l">est. lost /mo</div></div>
+      <div class="lead__revs hide-sm" title="Google reviews — our stand-in for how busy/established (and able to pay) they are."><span class="n">${b.reviewCount ?? 0}</span> ★${b.rating ? ' ' + b.rating : ''}<div class="muted" style="font-size:11px">reviews</div></div>
+      <div class="lead__opp hide-sm" title="Rough estimate of money they're leaving on the table each month from their web problem. Say 'around $X' — it's an estimate, not exact."><span class="n">${usd(s.opportunityUsd)}</span><div class="l">est. lost /mo</div></div>
       <div class="chevron">›</div>
     </div>
     <div class="lead__detail">
