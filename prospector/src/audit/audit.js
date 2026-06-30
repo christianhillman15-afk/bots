@@ -5,7 +5,7 @@ import { clamp, round } from '../util.js';
 
 /**
  * Presence categories, worst→best. The `severity` weight feeds the lead
- * score: the worse the web presence, the bigger the opportunity for SURGE.
+ * score: the worse the web presence, the bigger the opportunity for Oxsome.
  */
 export const PRESENCE = {
   none: { label: 'No website at all', severity: 1.0 },

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# One-shot setup for SURGE Prospector on a fresh DigitalOcean Droplet
+# One-shot setup for Oxsome Prospector on a fresh DigitalOcean Droplet
 # (Ubuntu 22.04 / 24.04). Installs Node, installs the app, writes config,
 # and runs it 24/7 under systemd (auto-restart + start-on-boot).
 #
@@ -20,7 +20,7 @@ APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"   # .../prospector
 PORT="${APP_PORT:-4317}"
 SERVICE=surge-prospector
 
-echo "==> SURGE Prospector setup (app dir: $APP_DIR, port: $PORT)"
+echo "==> Oxsome Prospector setup (app dir: $APP_DIR, port: $PORT)"
 
 if [ -z "${DASH_PASS:-}" ]; then
   echo "!! DASH_PASS is not set — refusing to deploy an unprotected dashboard."
@@ -71,7 +71,7 @@ echo "==> Installing systemd service..."
 NODE_BIN="$(command -v node)"
 cat > /etc/systemd/system/${SERVICE}.service <<EOF
 [Unit]
-Description=SURGE Prospector lead finder
+Description=Oxsome Prospector lead finder
 After=network.target
 
 [Service]
@@ -95,7 +95,7 @@ IP="$(curl -s --max-time 4 http://169.254.169.254/metadata/v1/interfaces/public/
 sleep 2
 echo
 echo "============================================================"
-echo " ✅ SURGE Prospector is running."
+echo " ✅ Oxsome Prospector is running."
 echo "    Open:     http://${IP}:${PORT}"
 echo "    Login:    user 'surge'  /  the password you set"
 echo "    Logs:     journalctl -u ${SERVICE} -f"

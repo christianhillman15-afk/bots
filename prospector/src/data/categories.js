@@ -1,7 +1,7 @@
 /**
  * Target business categories: local trades & professional services that
  * (a) frequently have a weak/broken/missing website, and
- * (b) earn enough to comfortably afford SURGE ($750–$2,500/mo).
+ * (b) earn enough to comfortably afford Oxsome ($750–$2,500/mo).
  *
  *   searchTerm     — natural-language query for Places Text Search
  *   placesType     — Google Places API (New) Table-A type, '' if none exists
@@ -45,6 +45,6 @@ export const CATEGORIES = [
 export const findCategory = (key) =>
   CATEGORIES.find((c) => c.key === key || c.searchTerm.toLowerCase() === key.toLowerCase());
 
-/** Default category set: the strongest SURGE fits (premium + high tiers). */
+/** Default category set: the strongest Oxsome fits (premium + high tiers). */
 export const defaultCategories = () =>
   CATEGORIES.filter((c) => c.tier === 'premium' || c.tier === 'high');

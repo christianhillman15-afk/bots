@@ -78,7 +78,7 @@ async function cmdScan(opts) {
   const maxPerCity = Number(opts.max) || 20;
   const minScore = Number(opts['min-score']) || 0;
 
-  log.title('SURGE PROSPECTOR — scan');
+  log.title('OXSOME PROSPECTOR — scan');
   if (!isLive()) {
     log.warn(color.yellow('DEMO MODE') + ' — no GOOGLE_PLACES_API_KEY set. Using realistic sample data.');
     log.info(color.gray('Set the key in .env to hunt real businesses nationwide.'));
@@ -222,7 +222,7 @@ const stripAnsi = (s) => String(s).replace(/\x1b\[[0-9;]*m/g, '');
 // ── help ───────────────────────────────────────────────────────────────────
 function help() {
   console.log(`
-${color.bold('SURGE Prospector')} — find businesses with no/bad websites that can afford SURGE.
+${color.bold('Oxsome Prospector')} — find businesses with no/bad websites that can afford Oxsome.
 
 ${color.bold('Usage:')} prospector <command> [options]
 

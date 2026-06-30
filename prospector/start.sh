@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Dead-simple local launcher for SURGE Prospector.
+# Dead-simple local launcher for Oxsome Prospector.
 # Mac/Linux: double-click or run `./start.sh` from a terminal.
 set -e
 cd "$(dirname "$0")"

@@ -96,7 +96,10 @@ function renderLeads(leads) {
     row.addEventListener('click', (e) => { if (e.target.closest('a,button,select')) return; row.parentElement.classList.toggle('open'); });
   });
   root.querySelectorAll('.copybtn').forEach((b) => b.addEventListener('click', () => {
-    navigator.clipboard.writeText(b.dataset.pitch).then(() => { b.textContent = '✓ Copied'; setTimeout(() => (b.textContent = '⧉ Copy pitch'), 1500); });
+    const original = b.textContent;
+    navigator.clipboard.writeText(b.dataset.copy || '').then(() => {
+      b.textContent = '✓ Copied'; setTimeout(() => (b.textContent = original), 1500);
+    });
   }));
   root.querySelectorAll('.statussel').forEach((sel) => sel.addEventListener('change', () => {
     fetch('/api/leads/' + encodeURIComponent(sel.dataset.id), {
@@ -120,6 +123,57 @@ function leadCard(l) {
         : `<span>${esc(b.website)}</span>`)
     : '<span class="muted">none</span>';
   const mapsHref = safeUrl(b.googleMapsUri);
+
+  // Openers: use the new multi-opener list, fall back to the single pitch.
+  const openers = (s.openers && s.openers.length)
+    ? s.openers
+    : (s.pitch ? [{ label: 'Suggested opener', text: s.pitch }] : []);
+  const openersHtml = openers.map((o) => `
+    <div class="opener">
+      <div class="opener__head">
+        <span class="opener__label">${esc(o.label)}</span>
+        <button class="btn btn--ghost copybtn" data-copy="${esc(o.text)}">⧉ Copy</button>
+      </div>
+      <div class="pitch">${esc(o.text).replace(/\n/g, '<br>')}</div>
+    </div>`).join('');
+
+  // Business + audit facts for the profile
+  const priceMap = ['Free', '$', '$$', '$$$', '$$$$'];
+  const facts = [];
+  facts.push(['Rating', `${b.rating ? b.rating + '★' : '—'} · ${b.reviewCount ?? 0} reviews`]);
+  facts.push(['Category', `${esc(b.categoryLabel || b.category || '—')}${b.tier ? ` · ${b.tier} tier` : ''}`]);
+  if (b.avgTicketUsd) facts.push(['Typical job value', `~${usd(b.avgTicketUsd)}`]);
+  facts.push(['Market', `${esc(b.city || '')}, ${esc(b.state || '')}${b.metroPopulation ? ` · metro ~${Number(b.metroPopulation).toLocaleString()}` : ''}`]);
+  facts.push(['Est. opportunity', `${usd(s.opportunityUsd)}/mo · ~${s.estMonthlyLeads ?? '?'} online leads/mo`]);
+  if (b.businessStatus && b.businessStatus !== 'OPERATIONAL') facts.push(['Status', esc(b.businessStatus)]);
+  if (b.priceLevel != null && priceMap[b.priceLevel]) facts.push(['Price level', priceMap[b.priceLevel]]);
+  const factsHtml = facts.map(([k, v]) => `<div class="kv"><span class="muted">${k}:</span> <b>${v}</b></div>`).join('');
+
+  // Audit detail
+  const aud = [];
+  aud.push(['Web presence', esc(a.headline || l.presence)]);
+  if (typeof a.healthScore === 'number') aud.push(['Site health', `${a.healthScore}/100`]);
+  if (a.probe) {
+    const p = a.probe;
+    const bits = [];
+    if (p.responseMs) bits.push(`loads in ${(p.responseMs / 1000).toFixed(1)}s`);
+    bits.push(`HTTPS ${p.https ? '✓' : '✗'}`);
+    if (p.status) bits.push(`HTTP ${p.status}`);
+    aud.push(['Site check', bits.join(' · ')]);
+    if (p.title) aud.push(['Page title', esc(p.title)]);
+  }
+  if (a.pagespeed) {
+    const ps = a.pagespeed;
+    const bits = [];
+    if (ps.performance != null) bits.push(`Speed ${ps.performance}`);
+    if (ps.seo != null) bits.push(`SEO ${ps.seo}`);
+    if (ps.bestPractices != null) bits.push(`Best-practices ${ps.bestPractices}`);
+    if (bits.length) aud.push(['PageSpeed', bits.join(' · ') + ' /100']);
+  }
+  const firstSeen = l.firstSeen ? new Date(l.firstSeen).toLocaleDateString() : null;
+  if (firstSeen) aud.push(['First found', firstSeen]);
+  const auditHtml = aud.map(([k, v]) => `<div class="kv"><span class="muted">${k}:</span> <b>${v}</b></div>`).join('');
+
   return `
   <div class="lead">
     <div class="lead__row">
@@ -139,24 +193,29 @@ function leadCard(l) {
     <div class="lead__detail">
       <div class="detail__grid">
         <div>
-          <h4 style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:10px">Why this is a lead</h4>
+          <h4 class="detail__h">Why this is a lead</h4>
           <div class="problems">${problems}</div>
-          ${(s.reasons || []).length ? `<ul style="margin:14px 0 0 16px;color:var(--muted);font-size:13px;line-height:1.6">${s.reasons.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>` : ''}
+          ${(s.reasons || []).length ? `<ul class="reasons">${s.reasons.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>` : ''}
+          <h4 class="detail__h" style="margin-top:16px">Website audit</h4>
+          ${auditHtml}
         </div>
         <div class="detail__side">
-          <h4>Contact</h4>
+          <h4 class="detail__h">Contact</h4>
           <div class="kv">📞 ${esc(b.phone || '—')}</div>
           <div class="kv">🌐 ${site}</div>
           <div class="kv">📍 ${esc(b.address || '')}</div>
           ${mapsHref ? `<div class="kv"><a href="${mapsHref}" target="_blank" rel="noopener">View on Google Maps ↗</a></div>` : ''}
-          <h4 style="margin-top:14px">Score breakdown</h4>
-          <div class="kv">Problem severity: <b>${s.breakdown.presence}</b> · Affordability: <b>${s.breakdown.affordability}</b> · Market: <b>${s.breakdown.market}</b></div>
-          <h4 style="margin-top:14px">Suggested opener</h4>
-          <div class="pitch">${esc(s.pitch)}</div>
+          <h4 class="detail__h" style="margin-top:16px">Business</h4>
+          ${factsHtml}
+          <h4 class="detail__h" style="margin-top:16px">Score breakdown</h4>
+          <div class="kv">Problem <b>${s.breakdown.presence}</b> · Affordability <b>${s.breakdown.affordability}</b> · Market <b>${s.breakdown.market}</b></div>
         </div>
       </div>
+
+      <h4 class="detail__h" style="margin-top:18px">Outreach openers — pick a channel, copy &amp; send</h4>
+      <div class="openers">${openersHtml}</div>
+
       <div class="detail__actions">
-        <button class="btn btn--ghost copybtn" data-pitch="${esc(s.pitch)}">⧉ Copy pitch</button>
         ${b.website ? `<a class="linkbtn" href="https://pagespeed.web.dev/report?url=${encodeURIComponent(b.website)}" target="_blank" rel="noopener">Run PageSpeed ↗</a>` : ''}
         ${l.compliance?.strictOutreachState ? '<span class="strict">⚠ Strict call/SMS state — email or manual landline only</span>' : ''}
         <select class="statussel" data-id="${esc(l.id)}">${statusOpts}</select>

@@ -1,12 +1,12 @@
-# ⚡ SURGE Prospector
+# ⚡ Oxsome Prospector
 
-**A lead-finding engine for [SURGE](../website).** It hunts the entire United States for local
+**A lead-finding engine for [Oxsome](../website).** It hunts the entire United States for local
 businesses that are **bleeding money because of their website** — the ones with **no site at all**,
 a **social page masquerading as a website**, a **broken/parked domain**, or a **slow, insecure,
 not-mobile, un-rankable site** — and surfaces only the ones that look **established enough to afford
-SURGE** ($750–$2,500/mo).
+Oxsome** ($750–$2,500/mo).
 
-It answers the exact pitch on the SURGE homepage — *"your competitor is stealing your calls"* — by
+It answers the exact pitch on the Oxsome homepage — *"your competitor is stealing your calls"* — by
 handing your sales process a ranked, filterable list of businesses for whom that's literally true,
 each with the audit findings, an opportunity estimate, and a ready-to-send opener.
 
@@ -18,7 +18,7 @@ each with the audit findings, an opportunity estimate, and a ready-to-send opene
 ## The thesis
 
 A busy, well-reviewed business in a major metro **with no/bad website** is leaving real money on the
-table every day — *"in shambles because of it."* That's the textbook SURGE customer. Prospector
+table every day — *"in shambles because of it."* That's the textbook Oxsome customer. Prospector
 scores every business on the **intersection of three signals**:
 
 | Signal | What it measures | Source |
@@ -156,7 +156,7 @@ appliance-repair`
 
 ## Dashboard
 
-`npm run serve` launches a SURGE-branded control room:
+`npm run serve` launches a Oxsome-branded control room:
 
 - **Pipeline stats** — total leads, 🔥 hot count, businesses with no real website, total estimated
   monthly opportunity.
@@ -213,9 +213,9 @@ src/
     pagespeed.js         Google PageSpeed Insights (Lighthouse)
     robots.js            polite robots.txt honoring
     audit.js             presence classification + severity
-  scoring/leadScore.js   SURGE Fit Score + opportunity estimate + pitch
+  scoring/leadScore.js   Oxsome Fit Score + opportunity estimate + pitch
   server.js / export.js  dashboard API + CSV
-public/                  the dashboard (SURGE-branded)
+public/                  the dashboard (Oxsome-branded)
 ```
 
 No build step, native modules, or database — just Node 18+ and two pure-JS deps (`express`,

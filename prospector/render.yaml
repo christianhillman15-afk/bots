@@ -1,4 +1,4 @@
-# Reference deploy settings for the SURGE Prospector dashboard on Render.
+# Reference deploy settings for the Oxsome Prospector dashboard on Render.
 #
 # Render's Blueprint auto-detection only reads render.yaml from the repo's
 # DEFAULT branch at the repo ROOT, so on this feature branch the most reliable

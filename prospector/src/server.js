@@ -44,7 +44,7 @@ function requireAuth(req, res, next) {
 function loginPage(error = false) {
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>SURGE Prospector — Login</title><style>
+<title>Oxsome Prospector — Login</title><style>
   body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
     font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
     background:radial-gradient(1000px 500px at 70% -10%,rgba(139,61,255,.18),transparent 60%),#07080f;color:#e9ebf5}
@@ -61,7 +61,7 @@ function loginPage(error = false) {
 </style></head><body>
 <form class="box" method="POST" action="/login">
   <div class="mark">⚡</div>
-  <h1>SUR<span style="color:#ff2d4d">GE</span> Prospector</h1>
+  <h1>Ox<span style="color:#ff2d4d">some</span> Prospector</h1>
   <div class="sub">Enter your password to continue</div>
   <input type="password" name="password" placeholder="Password" autofocus autocomplete="current-password"/>
   <button type="submit">Unlock →</button>
@@ -205,16 +205,18 @@ export function startServer() {
       { header: 'rating', get: (l) => l.business?.rating },
       { header: 'est_opportunity_mo', get: (l) => l.score?.opportunityUsd },
       { header: 'google_maps', get: (l) => l.business?.googleMapsUri },
-      { header: 'pitch', get: (l) => l.score?.pitch },
+      { header: 'call_script', get: (l) => csvOpener(l, 'call') },
+      { header: 'email_opener', get: (l) => csvOpener(l, 'email') },
+      { header: 'sms_opener', get: (l) => csvOpener(l, 'sms') },
     ];
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename="surge-leads.csv"');
+    res.setHeader('Content-Disposition', 'attachment; filename="oxsome-leads.csv"');
     res.send(toCsv(leads, cols));
   });
 
   // 0.0.0.0 so it's reachable when hosted (containers/PaaS), not just locally.
   app.listen(config.port, '0.0.0.0', () => {
-    log.title('SURGE PROSPECTOR — dashboard');
+    log.title('OXSOME PROSPECTOR — dashboard');
     log.ok(`http://localhost:${config.port}`);
     if (!isLive()) log.warn('DEMO MODE (no Places key). Scans use sample data.');
     if (config.dashboardPassword) log.ok('Password login required.');
@@ -263,6 +265,12 @@ function facets(all) {
 const inc = (obj, k) => {
   if (k) obj[k] = (obj[k] || 0) + 1;
 };
+
+/** Pull a channel's opener text for CSV (falls back to the primary pitch). */
+function csvOpener(l, channel) {
+  const found = (l.score?.openers || []).find((o) => o.channel === channel);
+  return found?.text || (channel === 'call' ? l.score?.pitch || '' : '');
+}
 
 function summary(all) {
   const s = {

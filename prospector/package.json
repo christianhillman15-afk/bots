@@ -1,7 +1,7 @@
 {
   "name": "surge-prospector",
   "version": "1.0.0",
-  "description": "Finds US businesses with no website (or a broken/bad one) that look established enough to afford SURGE — a lead-finding engine for the website + SEO retainer agency.",
+  "description": "Finds US businesses with no website (or a broken/bad one) that look established enough to afford Oxsome — a lead-finding engine for the website + SEO retainer agency.",
   "type": "module",
   "engines": {
     "node": ">=18.17"
