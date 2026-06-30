@@ -83,6 +83,10 @@ export class LeadStore {
     return [...this.leads.values()];
   }
 
+  remove(id) {
+    return this.leads.delete(id);
+  }
+
   get size() {
     return this.leads.size;
   }

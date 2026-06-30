@@ -23,7 +23,32 @@ async function boot() {
   $('#instantlyBtn').addEventListener('click', () => { window.location = '/api/export-instantly.csv?' + qs(); });
   $('#rescoreBtn').addEventListener('click', rescoreAll);
   $('#emailBtn').addEventListener('click', findEmails);
+  $('#verifyBtn').addEventListener('click', verifyWebsites);
   await refresh();
+}
+
+async function verifyWebsites() {
+  const btn = $('#verifyBtn');
+  if (!META.searchReady) {
+    alert('To verify websites, add a Claude key (ANTHROPIC_API_KEY) or Gemini key to your .env and restart, then try again.');
+    return;
+  }
+  if (!confirm('Search the web (by name + phone) for every "no website" lead to confirm or find their real site? Runs in batches of 100.')) return;
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = '🔍 Searching…';
+  try {
+    const r = await fetch('/api/verify-websites', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed');
+    btn.textContent = `✓ ${d.foundSites} sites found`;
+    if (d.remaining > 0) btn.title = `${d.remaining} leads left — click again to continue`;
+    await refresh();
+    setTimeout(() => (btn.textContent = original), 3000);
+  } catch (e) {
+    btn.textContent = '✗ ' + (e.message || 'Failed'); setTimeout(() => (btn.textContent = original), 3000);
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 async function findEmails() {

@@ -33,6 +33,14 @@ export const config = {
   autoScanIntervalMin: Number(process.env.AUTO_SCAN_INTERVAL_MIN) || 180,
   autoScanChunk: Number(process.env.AUTO_SCAN_CHUNK) || 3, // categories per tick
   autoScanMaxPerCity: Number(process.env.AUTO_SCAN_MAX) || 20,
+  // Website verification — searches the live web to catch real sites Google
+  // Places didn't list, so "no website" leads are accurate. Works with EITHER
+  // Claude (web search tool) or Gemini (Google Search grounding); Claude wins
+  // if both keys are set.
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY?.trim() || '',
+  anthropicModel: process.env.ANTHROPIC_MODEL?.trim() || 'claude-haiku-4-5',
+  geminiApiKey: process.env.GEMINI_API_KEY?.trim() || '',
+  geminiModel: process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash',
 };
 
 /** True when we have a real Places key; otherwise we run on demo data. */

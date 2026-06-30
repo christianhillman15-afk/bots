@@ -9,6 +9,7 @@ import { CATEGORIES, findCategory, defaultCategories } from './data/categories.j
 import { toCsv } from './util.js';
 import { scoreLead } from './scoring/leadScore.js';
 import { enrichEmails } from './enrich/emailFinder.js';
+import { verifyMissingWebsites, searchReady } from './enrich/websiteFinder.js';
 import { createScheduler } from './scheduler.js';
 import { log } from './logger.js';
 
@@ -114,6 +115,7 @@ export function startServer() {
     res.json({
       live: isLive(),
       provider: isLive() ? 'google-places' : 'demo',
+      searchReady: searchReady(),
       auditMode: config.auditMode,
       categories: CATEGORIES.map((c) => ({ key: c.key, label: c.label, tier: c.tier })),
       metros: METROS.map((m) => ({ city: m.city, state: m.state, metroPopulation: m.metroPopulation })),
@@ -139,6 +141,21 @@ export function startServer() {
     }
     store.save();
     res.json({ ok: true, rescored: n });
+  });
+
+  // Verify "no website" leads by searching Google (Gemini grounding).
+  app.post('/api/verify-websites', async (_req, res) => {
+    if (!searchReady()) return res.status(400).json({ error: 'No web-search key set (ANTHROPIC_API_KEY or GEMINI_API_KEY).' });
+    if (scanning) return res.status(409).json({ error: 'Busy — a scan is running.' });
+    scanning = true;
+    try {
+      const result = await verifyMissingWebsites({ store, limit: 100 });
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    } finally {
+      scanning = false;
+    }
   });
 
   // Find contact emails on lead websites (batched so the request returns).

@@ -115,7 +115,7 @@ function stripBusiness(b) {
   const { _demo, _id, ...rest } = b;
   return rest;
 }
-function stripAudit(a) {
+export function stripAudit(a) {
   return {
     presence: a.presence,
     headline: a.headline,

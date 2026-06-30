@@ -8,6 +8,7 @@ import { startServer } from '../src/server.js';
 import { writeCsv } from '../src/export.js';
 import { scoreLead } from '../src/scoring/leadScore.js';
 import { enrichEmails } from '../src/enrich/emailFinder.js';
+import { verifyMissingWebsites, searchReady } from '../src/enrich/websiteFinder.js';
 import { log, color } from '../src/logger.js';
 import { usd } from '../src/util.js';
 
@@ -199,6 +200,27 @@ async function cmdFindEmails(opts) {
   log.ok(`Found ${res.found} emails (checked ${res.processed} sites)${res.remaining ? ` · ${res.remaining} still to check — run again` : ''}.`);
 }
 
+// Verify "no website" leads by actually searching Google (Gemini grounding).
+async function cmdVerifyWebsites(opts) {
+  const store = new LeadStore();
+  const tty = process.stdout.isTTY;
+  log.title('OXSOME PROSPECTOR — verify missing websites');
+  if (!searchReady()) {
+    log.err('No web-search key set. Add ANTHROPIC_API_KEY (Claude) or GEMINI_API_KEY to .env.');
+    return;
+  }
+  log.info('Searching the web (by name + phone) for each "no website" lead to confirm or find their real site…');
+  const res = await verifyMissingWebsites({
+    store,
+    limit: Number(opts.limit) || 0,
+    onProgress: (p) => {
+      if (tty && p.done % 3 === 0) process.stdout.write('\r' + `  checked ${p.done}/${p.total} · found ${p.foundSites} · removed ${p.removedOk}`.padEnd(64));
+    },
+  });
+  if (tty) process.stdout.write('\r'.padEnd(66) + '\r');
+  log.ok(`Done: ${res.foundSites} actually had sites (re-audited), ${res.removedOk} had fine sites (removed), ${res.confirmedNone} confirmed no website${res.remaining ? ` · ${res.remaining} left — run again` : ''}.`);
+}
+
 // Re-score every stored lead in place — regenerates openers + full call script
 // from saved data. No API calls; keeps status, notes, and first-seen dates.
 function cmdRescore() {
@@ -268,6 +290,7 @@ ${color.bold('Commands:')}
   export    Write leads to CSV for outreach
   rescore   Regenerate openers + full script on ALL stored leads (no API calls)
   find-emails  Visit lead websites and pull contact emails (--limit N optional)
+  verify-websites  Google-search "no website" leads to confirm/find real sites (needs GEMINI_API_KEY)
   serve     Launch the web dashboard
 
 ${color.bold('scan options:')}
@@ -307,6 +330,7 @@ const run = {
   serve: () => cmdServe(opts),
   rescore: () => cmdRescore(opts),
   'find-emails': () => cmdFindEmails(opts),
+  'verify-websites': () => cmdVerifyWebsites(opts),
 };
 (async () => {
   if (!cmd || opts.help || cmd === 'help') return help();
