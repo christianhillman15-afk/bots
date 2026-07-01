@@ -290,6 +290,35 @@ export async function findOwner(business) {
   return { ok: true, name: parseName(text) };
 }
 
+// Pull a usable contact email out of a search answer, filtering junk/placeholders.
+function parseEmail(text) {
+  if (!text) return null;
+  const m = text.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
+  if (!m) return null;
+  const e = m[0].toLowerCase().replace(/[.,;:]+$/, '');
+  if (e.length > 60 || e.includes('..')) return null;
+  if (/^(noreply|no-reply|donotreply|postmaster|abuse)@/.test(e)) return null;
+  const bad = ['example.com', 'domain.com', 'email.com', 'yourbusiness.com', 'yourdomain.com', 'sentry.io', 'wixpress.com', 'company.com'];
+  if (bad.some((b) => e.endsWith('@' + b))) return null;
+  return e;
+}
+
+/** Web-search for a business's contact email (for leads with no scrapable site). */
+export async function findEmailWeb(business) {
+  if (!config.anthropicApiKey && !config.geminiApiKey) return { ok: false, email: null };
+  const q = [business.name, business.city, business.state].filter(Boolean).join(', ');
+  const phone = business.phone ? ` Their phone is ${business.phone}.` : '';
+  const prompt =
+    `Find the best CONTACT EMAIL address for this local business: "${q}"` +
+    `${business.categoryLabel ? ` (a ${business.categoryLabel})` : ''}.${phone}\n` +
+    `Check their website, Facebook page, and business directories. Prefer a real inbox ` +
+    `(owner@, the business name, or info@/contact@ on their own domain).\n` +
+    `Reply with ONLY the email address. If you genuinely can't find one, reply exactly: NONE`;
+  const { ok, text } = await runSearch(prompt); // runSearch enforces the daily cap
+  if (!ok) return { ok: false, email: null };
+  return { ok: true, email: parseEmail(text) };
+}
+
 const needsOwner = (l) => l.business && !l.business.ownerName && !l.business.ownerChecked;
 
 /** Enrich leads with owner names (Claude/Gemini), re-scoring so openers update. */

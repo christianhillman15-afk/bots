@@ -118,7 +118,7 @@ async function verifyWebsites() {
 
 async function findEmails() {
   const btn = $('#emailBtn');
-  if (!confirm('Visit lead websites to find contact emails? Leads with a website only — no-website leads stay phone-only. This can take a few minutes.')) return;
+  if (!confirm('Find contact emails? Scrapes lead websites AND web-searches for emails on no-website leads (uses your daily search budget). This can take a few minutes.')) return;
   const original = btn.textContent;
   btn.disabled = true; btn.textContent = '✉️ Finding…';
   try {
