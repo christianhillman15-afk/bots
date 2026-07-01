@@ -8,27 +8,30 @@ import { stripAudit } from '../scan.js';
 import { STRICT_OUTREACH_STATES } from '../data/metros.js';
 
 /*
- * Daily free-tier guard. Every web search (website-verify + owner lookup) goes
- * through one counter persisted to disk. Once we hit config.searchDailyCap in a
- * given day we stop making calls and resume tomorrow — so we can never spill
- * past the provider's free daily allowance and get billed. 0 = no cap.
+ * Free-tier guard. Every web search (website-verify + owner lookup) goes through
+ * one counter persisted to disk. Once we hit config.searchCap within the current
+ * period (a calendar day for Gemini 2.5's daily allowance, or a calendar month
+ * for Gemini 3.x's monthly allowance) we stop making calls until the period
+ * rolls over — so we can never spill past the provider's free allowance and get
+ * billed. config.searchCap = 0 disables the cap.
  */
 const usageFile = () => join(config.dataDir, 'search-usage.json');
-function today() {
-  return new Date().toISOString().slice(0, 10);
+function periodKey() {
+  const iso = new Date().toISOString();
+  return config.searchCapPeriod === 'day' ? iso.slice(0, 10) : iso.slice(0, 7); // YYYY-MM-DD or YYYY-MM
 }
 function readUsage() {
   try {
     const u = JSON.parse(readFileSync(usageFile(), 'utf8'));
-    if (u && u.date === today()) return { date: u.date, count: Number(u.count) || 0 };
+    if (u && u.period === periodKey()) return { period: u.period, count: Number(u.count) || 0 };
   } catch {
-    /* missing/old file -> fresh day */
+    /* missing/old file or new period -> fresh count */
   }
-  return { date: today(), count: 0 };
+  return { period: periodKey(), count: 0 };
 }
 /** Reserve one search if we're under the cap. Returns true if allowed. */
 function reserveSearch() {
-  const cap = Number(config.searchDailyCap) || 0;
+  const cap = Number(config.searchCap) || 0;
   const u = readUsage();
   if (cap > 0 && u.count >= cap) return false;
   u.count += 1;
@@ -40,11 +43,11 @@ function reserveSearch() {
   }
   return true;
 }
-/** Public: today's usage for the dashboard ({ used, cap, remaining }). */
+/** Public: usage this period for the dashboard ({ used, cap, remaining, period }). */
 export function searchUsage() {
-  const cap = Number(config.searchDailyCap) || 0;
+  const cap = Number(config.searchCap) || 0;
   const used = readUsage().count;
-  return { used, cap, remaining: cap > 0 ? Math.max(0, cap - used) : null };
+  return { used, cap, remaining: cap > 0 ? Math.max(0, cap - used) : null, period: config.searchCapPeriod };
 }
 
 /*

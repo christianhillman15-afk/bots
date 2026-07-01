@@ -44,13 +44,14 @@ async function renderUsage() {
   const u = META.searchUsage;
   if (!META.searchReady || !u) { el.hidden = true; return; }
   el.hidden = false;
+  const when = u.period === 'day' ? 'today' : 'this month';
   if (u.cap) {
-    el.textContent = `🔎 ${u.used}/${u.cap} today`;
-    el.title = `Web searches used today: ${u.used} of your ${u.cap}/day safety cap. Resets each day. While under the free limit you can't be billed.`;
+    el.textContent = `🔎 ${u.used}/${u.cap} ${when}`;
+    el.title = `Web searches used ${when}: ${u.used} of your ${u.cap}/${u.period} safety cap. Resets each ${u.period}. While under the free limit you can't be billed.`;
     el.classList.toggle('usage--full', u.remaining === 0);
   } else {
-    el.textContent = `🔎 ${u.used} today`;
-    el.title = 'Web searches used today (no daily cap set).';
+    el.textContent = `🔎 ${u.used} ${when}`;
+    el.title = `Web searches used ${when} (no cap set).`;
     el.classList.remove('usage--full');
   }
 }
