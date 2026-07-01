@@ -9,7 +9,7 @@ import { CATEGORIES, findCategory, defaultCategories } from './data/categories.j
 import { toCsv } from './util.js';
 import { scoreLead } from './scoring/leadScore.js';
 import { enrichEmails } from './enrich/emailFinder.js';
-import { verifyMissingWebsites, enrichOwners, searchReady, searchUsage } from './enrich/websiteFinder.js';
+import { verifyMissingWebsites, enrichOwners, searchReady, searchUsage, recheckLead } from './enrich/websiteFinder.js';
 import { createScheduler } from './scheduler.js';
 import { log } from './logger.js';
 
@@ -167,6 +167,22 @@ export function startServer() {
     try {
       const result = await enrichOwners({ store, limit: 100 });
       res.json({ ok: true, ...result });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    } finally {
+      scanning = false;
+    }
+  });
+
+  // Force a fresh website check on ONE lead (per-lead "re-check" button).
+  app.post('/api/leads/:id/recheck', async (req, res) => {
+    if (!searchReady()) return res.status(400).json({ error: 'No web-search key set (ANTHROPIC_API_KEY or GEMINI_API_KEY).' });
+    if (scanning) return res.status(409).json({ error: 'Busy — a scan is running.' });
+    scanning = true;
+    try {
+      const result = await recheckLead({ store, id: req.params.id });
+      if (!result.ok) return res.status(404).json(result);
+      res.json(result);
     } catch (err) {
       res.status(500).json({ error: err.message });
     } finally {

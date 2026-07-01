@@ -104,6 +104,35 @@ function buildPrompt(business) {
   );
 }
 
+// A hostname that looks like a real domain (used to mine search sources).
+function hostFromTitle(title) {
+  const s = (title || '').trim().toLowerCase();
+  return /^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}$/.test(s) ? 'https://' + s : null;
+}
+
+/** Pull candidate URLs out of Gemini's grounding metadata (its search sources). */
+function geminiSources(data) {
+  const chunks = data?.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+  const out = [];
+  for (const c of chunks) {
+    const fromTitle = hostFromTitle(c?.web?.title);
+    if (fromTitle) out.push(fromTitle);
+    if (c?.web?.uri && /^https?:\/\//i.test(c.web.uri)) out.push(c.web.uri); // redirect; resolved when probed
+  }
+  return out;
+}
+
+/** Pull candidate URLs out of Claude's web_search tool results. */
+function claudeSources(data) {
+  const out = [];
+  for (const block of data?.content || []) {
+    if (block?.type === 'web_search_tool_result' && Array.isArray(block.content)) {
+      for (const r of block.content) if (r?.url) out.push(r.url);
+    }
+  }
+  return out;
+}
+
 /** Claude with its web search tool. */
 async function findWebsiteClaude(business) {
   const controller = new AbortController();
@@ -124,16 +153,16 @@ async function findWebsiteClaude(business) {
       }),
       signal: controller.signal,
     });
-    if (!res.ok) return { ok: false, url: null };
+    if (!res.ok) return { ok: false, url: null, sources: [] };
     const data = await res.json();
     const text = (data.content || [])
       .filter((b) => b.type === 'text')
       .map((b) => b.text)
       .join(' ')
       .trim();
-    return { ok: true, url: parseUrl(text) };
+    return { ok: true, url: parseUrl(text), sources: claudeSources(data) };
   } catch {
-    return { ok: false, url: null };
+    return { ok: false, url: null, sources: [] };
   } finally {
     clearTimeout(t);
   }
@@ -153,16 +182,16 @@ async function findWebsiteGemini(business) {
       }),
       signal: controller.signal,
     });
-    if (!res.ok) return { ok: false, url: null };
+    if (!res.ok) return { ok: false, url: null, sources: [] };
     const data = await res.json();
     const text = (data?.candidates?.[0]?.content?.parts || [])
       .map((p) => p.text)
       .filter(Boolean)
       .join(' ')
       .trim();
-    return { ok: true, url: parseUrl(text) };
+    return { ok: true, url: parseUrl(text), sources: geminiSources(data) };
   } catch {
-    return { ok: false, url: null };
+    return { ok: false, url: null, sources: [] };
   } finally {
     clearTimeout(t);
   }
@@ -175,7 +204,7 @@ export const searchReady = () => Boolean(config.anthropicApiKey || config.gemini
 export async function findWebsite(business) {
   if (!config.anthropicApiKey && !config.geminiApiKey)
     throw new Error('No web-search key set (ANTHROPIC_API_KEY or GEMINI_API_KEY)');
-  if (!reserveSearch()) return { ok: false, url: null, capped: true }; // daily cap hit
+  if (!reserveSearch()) return { ok: false, url: null, sources: [], capped: true }; // daily cap hit
   if (config.anthropicApiKey) return findWebsiteClaude(business);
   return findWebsiteGemini(business);
 }
@@ -310,36 +339,46 @@ function candidateDomains(business) {
   const all = nameWords(business.name);
   if (!all.length) return [];
   const noStop = all.filter((w) => !NAME_STOP.has(w));
+  const city = nameWords(business.city).join('');
   const bases = new Set();
   const addBase = (toks) => {
     if (!toks.length) return;
     bases.add(toks.join('')); // kingautocollisioninc
     if (toks.length > 1) bases.add(toks.join('-')); // king-auto-collision
+    if (city) bases.add(toks.join('') + city); // bobsplumbingdallas
   };
   addBase(all); // keeps the suffix (matches kingautocollisioninc.com)
   addBase(noStop); // drops Inc/LLC (matches kingautocollision.com)
   addBase(noStop.slice(0, 3));
   addBase(noStop.slice(0, 2));
+  const prefixed = [];
+  for (const b of bases) for (const p of ['get', 'the', 'my']) prefixed.push(p + b);
+  for (const p of prefixed) bases.add(p);
   const out = [];
   for (const b of bases) {
     if (b.length < 4 || b.length > 40) continue;
-    out.push(`${b}.com`, `${b}.net`);
+    for (const tld of ['com', 'net', 'co', 'biz', 'us']) out.push(`${b}.${tld}`);
   }
   // .com first, then cap the number of probes per lead
-  return [...new Set(out)].sort((a, z) => Number(z.endsWith('.com')) - Number(a.endsWith('.com'))).slice(0, 8);
+  return [...new Set(out)].sort((a, z) => Number(z.endsWith('.com')) - Number(a.endsWith('.com'))).slice(0, 14);
 }
 
-function pageProvesIdentity(html, business) {
+// Does this page belong to the business? Two strengths:
+//   strict — used for speculative name-guessed domains (must be clearly them)
+//   weak   — used for URLs a search actually returned for this business
+function pageMatches(html, business, finalHost, strict) {
   const text = html.toLowerCase();
   const phone = (business.phone || '').replace(/\D/g, '').slice(-10);
   if (phone.length === 10 && text.replace(/\D/g, '').includes(phone)) return true; // strongest signal
   const words = nameWords(business.name).filter((w) => !NAME_STOP.has(w) && w.length >= 4);
   const nameHits = words.filter((w) => text.includes(w)).length;
   const cityHit = business.city ? text.includes(business.city.toLowerCase()) : false;
-  return nameHits >= 3 || (nameHits >= 2 && cityHit);
+  const domainHasName = words.some((w) => (finalHost || '').includes(w));
+  if (strict) return nameHits >= 3 || (nameHits >= 2 && cityHit);
+  return nameHits >= 2 || (nameHits >= 1 && (cityHit || domainHasName));
 }
 
-async function probeCandidate(url, business) {
+async function probeUrl(url, business, { strict = true } = {}) {
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 8000);
@@ -351,9 +390,9 @@ async function probeCandidate(url, business) {
     clearTimeout(t);
     if (!res.ok) return null;
     const finalHost = new URL(res.url || url).hostname.replace(/^www\./, '').toLowerCase();
-    if (BAD_HOSTS.some((b) => finalHost === b || finalHost.endsWith('.' + b))) return null; // redirected to social/dir
+    if (BAD_HOSTS.some((b) => finalHost === b || finalHost.endsWith('.' + b))) return null; // social/dir
     const html = (await res.text()).slice(0, 300000);
-    if (!pageProvesIdentity(html, business)) return null;
+    if (!pageMatches(html, business, finalHost, strict)) return null;
     try { return new URL(res.url || url).origin; } catch { return url; }
   } catch {
     return null;
@@ -363,8 +402,25 @@ async function probeCandidate(url, business) {
 /** Guess + verify a business's website for free (no API). Returns URL or null. */
 export async function guessWebsite(business) {
   for (const host of candidateDomains(business)) {
-    const hit = (await probeCandidate('https://' + host, business)) ||
-                (await probeCandidate('http://' + host, business));
+    const hit = (await probeUrl('https://' + host, business, { strict: true })) ||
+                (await probeUrl('http://' + host, business, { strict: true }));
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/** Given URLs a search actually surfaced for this business, confirm the real one. */
+async function confirmFromSources(sources, business) {
+  const seen = new Set();
+  let tried = 0;
+  for (const raw of sources || []) {
+    let host;
+    try { host = new URL(raw).hostname.replace(/^www\./, '').toLowerCase(); } catch { continue; }
+    if (seen.has(host)) continue;
+    seen.add(host);
+    if (BAD_HOSTS.some((b) => host === b || host.endsWith('.' + b))) continue;
+    if (++tried > 8) break; // bound the work
+    const hit = await probeUrl(raw, business, { strict: false });
     if (hit) return hit;
   }
   return null;
@@ -376,6 +432,50 @@ export async function guessWebsite(business) {
 const needsVerify = (l) =>
   (l.presence === 'none' || l.presence === 'social_only') &&
   !(l.business?.websiteVerified && l.business?.guessChecked);
+
+/*
+ * Resolve ONE lead's website. Layered so a real site is hard to miss:
+ *   1. free name-domain guess (strict identity confirm)
+ *   2. grounded search — trust its direct answer, else mine its actual sources
+ *      (weak identity confirm) so a "NONE" answer can't hide a real site.
+ * Only returns 'confirmedNone' when a real search ran and everything came up
+ * empty; a capped/throttled search returns 'retry' (never a false confirm).
+ * Returns 'removed' | 'foundSite' | 'confirmedNone' | 'retry'.
+ */
+async function resolveLead(lead, store, { force = false } = {}) {
+  const biz = lead.business;
+  if (force) { biz.guessChecked = false; biz.websiteVerified = false; }
+  let url = null;
+  let groundedSaidNone = false;
+
+  if (!biz.guessChecked) {
+    try { url = await guessWebsite(biz); } catch { url = null; }
+    biz.guessChecked = true;
+  }
+  if (!url && !biz.websiteVerified) {
+    let r = { ok: false, url: null, sources: [] };
+    try { r = await findWebsite(biz); } catch { r = { ok: false, url: null, sources: [] }; }
+    if (r.ok) {
+      url = r.url || (await confirmFromSources(r.sources, biz));
+      if (!url) groundedSaidNone = true;
+    }
+  }
+
+  if (url) {
+    biz.website = url;
+    biz.websiteVerified = true;
+    const audit = await auditBusiness(biz);
+    const score = scoreLead(biz, audit);
+    if (!isLead(audit)) { store.remove(lead.id); return 'removed'; }
+    lead.presence = audit.presence;
+    lead.audit = stripAudit(audit);
+    lead.score = score;
+    lead.compliance = { strictOutreachState: STRICT_OUTREACH_STATES.has(biz.state) };
+    return 'foundSite';
+  }
+  if (groundedSaidNone) { biz.websiteVerified = true; return 'confirmedNone'; }
+  return 'retry';
+}
 
 /**
  * Verify missing-website leads. `limit` caps how many to process this run.
@@ -392,48 +492,11 @@ export async function verifyMissingWebsites({ store, limit = 0, onProgress = () 
 
   // Gentle concurrency keeps us under free-tier rate limits.
   await mapLimit(slice, 2, async (lead) => {
-    const biz = lead.business;
-    let url = null;
-    let groundedSaidNone = false;
-
-    // 1) FREE domain guess first (catches name-as-domain sites grounding misses,
-    //    and re-checks leads an older run wrongly marked "confirmed none").
-    if (!biz.guessChecked) {
-      try { url = await guessWebsite(biz); } catch { url = null; }
-      biz.guessChecked = true;
-    }
-
-    // 2) Only spend a grounded search if the guess found nothing AND we haven't
-    //    already done a grounded search for this lead.
-    if (!url && !biz.websiteVerified) {
-      let r = { ok: false, url: null };
-      try { r = await findWebsite(biz); } catch { r = { ok: false, url: null }; }
-      if (r.ok && r.url) url = r.url;
-      else if (r.ok) groundedSaidNone = true; // searched, genuinely nothing
-      // r.ok === false => throttled/capped => leave for retry (not confirmed)
-    }
-
-    if (url) {
-      biz.website = url;
-      biz.websiteVerified = true;
-      const audit = await auditBusiness(biz);
-      const score = scoreLead(biz, audit);
-      if (!isLead(audit)) {
-        store.remove(lead.id); // they actually have a real website — not a prospect
-        removedOk++;
-      } else {
-        lead.presence = audit.presence;
-        lead.audit = stripAudit(audit);
-        lead.score = score;
-        lead.compliance = { strictOutreachState: STRICT_OUTREACH_STATES.has(biz.state) };
-        foundSites++;
-      }
-    } else if (groundedSaidNone) {
-      biz.websiteVerified = true; // guess + grounded search both came up empty -> trustworthy
-      confirmedNone++;
-    } else if (!biz.websiteVerified) {
-      failed++; // capped/throttled — try again next run
-    }
+    const outcome = await resolveLead(lead, store);
+    if (outcome === 'removed') removedOk++;
+    else if (outcome === 'foundSite') foundSites++;
+    else if (outcome === 'confirmedNone') confirmedNone++;
+    else failed++; // 'retry' (capped/throttled) — try again next run
     done++;
     onProgress({ done, total: slice.length, foundSites, removedOk, confirmedNone, failed });
   });
@@ -446,5 +509,21 @@ export async function verifyMissingWebsites({ store, limit = 0, onProgress = () 
     confirmedNone,
     failed,
     remaining: Math.max(0, targets.length - slice.length),
+  };
+}
+
+/** Force a fresh website check on a single lead (for the per-lead re-check button). */
+export async function recheckLead({ store, id }) {
+  const lead = store.all().find((l) => l.id === id);
+  if (!lead) return { ok: false, error: 'Lead not found.' };
+  const outcome = await resolveLead(lead, store, { force: true });
+  store.save();
+  return {
+    ok: true,
+    outcome,
+    removed: outcome === 'removed',
+    found: outcome === 'removed' || outcome === 'foundSite',
+    website: lead.business?.website || null,
+    presence: lead.presence,
   };
 }

@@ -269,10 +269,28 @@ function renderLeads(leads) {
     detail.querySelectorAll('.tabpane').forEach((p) => (p.hidden = p.dataset.pane !== t.dataset.tab));
   }));
   root.querySelectorAll('.actbtn').forEach((b) => b.addEventListener('click', async (e) => {
+    if (b.classList.contains('act-recheck')) return; // handled separately below
     e.stopPropagation();
     b.disabled = true;
     await setStatus(b.dataset.id, b.dataset.status);
     refresh();
+  }));
+  root.querySelectorAll('.act-recheck').forEach((b) => b.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const orig = b.textContent;
+    b.disabled = true; b.textContent = '🔍 Checking…';
+    try {
+      const r = await fetch('/api/leads/' + encodeURIComponent(b.dataset.id) + '/recheck', { method: 'POST' });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Failed');
+      if (d.removed) { b.textContent = '✅ Has a site — removing'; await renderUsage(); setTimeout(refresh, 900); return; }
+      if (d.found) { b.textContent = '✅ Found their site'; await renderUsage(); setTimeout(refresh, 900); return; }
+      b.textContent = '✓ Confirmed no site';
+      await renderUsage();
+      setTimeout(() => { b.textContent = orig; b.disabled = false; }, 2500);
+    } catch (err) {
+      b.textContent = '✗ ' + (err.message || 'Failed'); setTimeout(() => { b.textContent = orig; b.disabled = false; }, 2500);
+    }
   }));
   root.querySelectorAll('.savenote').forEach((b) => b.addEventListener('click', async () => {
     const ta = root.querySelector(`.notesbox[data-id="${CSS.escape(b.dataset.id)}"]`);
@@ -457,6 +475,7 @@ function leadCard(l) {
 
       <div class="detail__actions">
         ${b.website ? `<a class="linkbtn" href="https://pagespeed.web.dev/report?url=${encodeURIComponent(b.website)}" target="_blank" rel="noopener">Run PageSpeed ↗</a>` : ''}
+        ${noSiteClaim ? `<button class="actbtn act-recheck" data-id="${esc(l.id)}" title="Search the web again right now to double-check whether this business has a website">🔍 Re-check website</button>` : ''}
         ${noSiteClaim ? `<button class="actbtn act-hassite" data-id="${esc(l.id)}" data-status="has_site" title="You found out they DO have a website — pull this lead out of your call list">🌐 They have a site — remove</button>` : ''}
         ${l.compliance?.strictOutreachState ? '<span class="strict">⚠ Strict call/SMS state — email or manual landline only</span>' : ''}
         <select class="statussel" data-id="${esc(l.id)}">${statusOpts}</select>

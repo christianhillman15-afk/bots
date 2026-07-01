@@ -8,7 +8,7 @@ import { startServer } from '../src/server.js';
 import { writeCsv } from '../src/export.js';
 import { scoreLead } from '../src/scoring/leadScore.js';
 import { enrichEmails } from '../src/enrich/emailFinder.js';
-import { verifyMissingWebsites, enrichOwners, searchReady } from '../src/enrich/websiteFinder.js';
+import { verifyMissingWebsites, enrichOwners, searchReady, findWebsite, guessWebsite } from '../src/enrich/websiteFinder.js';
 import { log, color } from '../src/logger.js';
 import { usd } from '../src/util.js';
 
@@ -244,6 +244,44 @@ async function cmdFindOwners(opts) {
   if (res.remaining) log.info(`${res.remaining} still to check — run again.`);
 }
 
+// Spot-check whether ONE business has a website — for verifying the detector.
+//   node bin/prospector.js check --name "King Auto Collision Inc" --phone "718-..." --city Brooklyn --state NY
+async function cmdCheck(opts) {
+  const business = {
+    name: opts.name || opts._.slice(1).join(' ') || '',
+    phone: opts.phone || '',
+    city: opts.city || '',
+    state: opts.state || '',
+    categoryLabel: opts.category || '',
+  };
+  if (!business.name) { log.err('Give a name: check --name "Business Name" [--phone .. --city .. --state ..]'); return; }
+  log.title('OXSOME PROSPECTOR — website spot-check');
+  log.info(`Business: ${business.name}${business.city ? ` · ${business.city}, ${business.state}` : ''}${business.phone ? ` · ${business.phone}` : ''}`);
+
+  log.info('1) Free domain guess (name → domain, probe & confirm)…');
+  const guess = await guessWebsite(business).catch(() => null);
+  log.ok(`   guess: ${guess || 'nothing'}`);
+
+  if (!searchReady()) {
+    log.warn('No web-search key set — skipping grounded search. Add GEMINI_API_KEY or ANTHROPIC_API_KEY for the full check.');
+  } else {
+    log.info('2) Grounded web search (answer + mined sources)…');
+    const r = await findWebsite(business).catch((e) => ({ ok: false, url: null, sources: [], error: e.message }));
+    if (r.capped) log.warn('   search skipped — daily cap reached.');
+    else if (!r.ok) log.warn('   search errored/throttled — try again.');
+    else {
+      log.ok(`   search answer: ${r.url || 'NONE'}`);
+      const src = (r.sources || []).slice(0, 8);
+      log.info(`   search saw ${src.length} source(s):`);
+      for (const s of src) console.log('     • ' + s);
+    }
+  }
+  const verdict = guess;
+  console.log('');
+  if (verdict) log.ok(`VERDICT: has a website → ${verdict}`);
+  else log.warn('VERDICT: no website found by the free guess (grounded search results above may still reveal one).');
+}
+
 // Re-score every stored lead in place — regenerates openers + full call script
 // from saved data. No API calls; keeps status, notes, and first-seen dates.
 function cmdRescore() {
@@ -315,6 +353,7 @@ ${color.bold('Commands:')}
   find-emails  Visit lead websites and pull contact emails (--limit N optional)
   verify-websites  Google-search "no website" leads to confirm/find real sites (needs GEMINI_API_KEY)
   find-owners  Find owner/principal names to personalize outreach (needs GEMINI/ANTHROPIC key)
+  check     Spot-check if ONE business has a website — check --name "Biz" [--phone .. --city .. --state ..]
   serve     Launch the web dashboard
 
 ${color.bold('scan options:')}
@@ -356,6 +395,7 @@ const run = {
   'find-emails': () => cmdFindEmails(opts),
   'verify-websites': () => cmdVerifyWebsites(opts),
   'find-owners': () => cmdFindOwners(opts),
+  check: () => cmdCheck(opts),
 };
 (async () => {
   if (!cmd || opts.help || cmd === 'help') return help();
