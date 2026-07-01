@@ -97,11 +97,15 @@ export function createScheduler({ store, isBusy, setBusy }) {
         setBusy(false);
       }
     }
-    // advance the cursor: next categories, then next metro, wrapping forever
-    catIndex += config.autoScanChunk;
-    if (catIndex >= CATEGORIES.length) {
-      catIndex = 0;
-      metroIndex = (metroIndex + 1) % METROS.length;
+    // Advance the cursor BREADTH-FIRST: hit a different metro every tick so each
+    // scan lands on fresh geography (all-new businesses), instead of grinding one
+    // city's ~30 categories for a day before moving on. Only after sweeping the
+    // same category block across every metro do we move to the next block.
+    metroIndex += 1;
+    if (metroIndex >= METROS.length) {
+      metroIndex = 0;
+      catIndex += config.autoScanChunk;
+      if (catIndex >= CATEGORIES.length) catIndex = 0;
     }
     save();
   }
