@@ -45,22 +45,20 @@ export const config = {
   anthropicApiKey: process.env.ANTHROPIC_API_KEY?.trim() || '',
   anthropicModel: process.env.ANTHROPIC_MODEL?.trim() || 'claude-haiku-4-5',
   geminiApiKey: process.env.GEMINI_API_KEY?.trim() || '',
-  geminiModel: process.env.GEMINI_MODEL?.trim() || 'gemini-3.5-flash',
+  geminiModel: process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash',
   // Hard cap on web searches (website-verify + owner lookup combined) to keep
   // usage safely inside the provider's FREE grounding allowance so you're never
-  // billed. Gemini 3.x free grounding is MONTHLY (5,000/mo) and billed per search
-  // query (a lead can trigger a few), so we default to a conservative monthly
-  // cap. Gemini 2.5 is DAILY (1,500/day, billed per lead) — for that set
-  // SEARCH_CAP_PERIOD=day and SEARCH_CAP=1400. SEARCH_CAP=0 disables the cap.
+  // billed. Gemini 2.5 free grounding is DAILY (1,500/day, billed per lead), so
+  // we default to a daily cap of 1,400. For Gemini 3.x (MONTHLY 5,000/mo, billed
+  // per query) set SEARCH_CAP_PERIOD=month and SEARCH_CAP=1500. SEARCH_CAP=0
+  // disables the cap.
   searchCapPeriod:
-    process.env.SEARCH_CAP_PERIOD?.toLowerCase() === 'day' ? 'day'
-    : process.env.SEARCH_DAILY_CAP !== undefined ? 'day'
-    : 'month',
+    process.env.SEARCH_CAP_PERIOD?.toLowerCase() === 'month' ? 'month' : 'day',
   searchCap:
     process.env.SEARCH_CAP !== undefined ? Number(process.env.SEARCH_CAP)
     : process.env.SEARCH_DAILY_CAP !== undefined ? Number(process.env.SEARCH_DAILY_CAP)
     : process.env.SEARCH_MONTHLY_CAP !== undefined ? Number(process.env.SEARCH_MONTHLY_CAP)
-    : 1500,
+    : 1400,
 };
 
 /** True when we have a real Places key; otherwise we run on demo data. */
