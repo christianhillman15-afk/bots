@@ -86,21 +86,23 @@ async function verifyWebsites() {
   if (!confirm('Web-search EVERY "no website" lead (by name + phone) to confirm or find their real site? This processes your whole list and may take a few minutes.')) return;
   const original = btn.textContent;
   btn.disabled = true;
-  let found = 0, removed = 0, confirmed = 0;
+  let found = 0, removed = 0, confirmed = 0, lastRemaining = Infinity;
   try {
     // Loop through the whole list, one batch at a time, until none are left.
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 60; i++) {
       btn.textContent = `🔍 Verifying… (${found + removed + confirmed} done)`;
       const r = await fetch('/api/verify-websites', { method: 'POST' });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Failed');
       found += d.foundSites || 0; removed += d.removedOk || 0; confirmed += d.confirmedNone || 0;
       if (!d.remaining) break;
-      // No forward progress (everything throttled) — stop instead of spinning forever.
-      if (((d.foundSites || 0) + (d.removedOk || 0) + (d.confirmedNone || 0)) === 0) {
-        btn.title = `${d.remaining} left — rate-limited, try again in a minute`;
+      // Stop only if the backlog stopped shrinking (everything left is rate-limited),
+      // NOT just because a batch found no new sites — re-checking old leads is progress.
+      if (d.remaining >= lastRemaining) {
+        btn.title = `${d.remaining} left — rate-limited; click again in a minute (or tomorrow if you hit the daily cap)`;
         break;
       }
+      lastRemaining = d.remaining;
     }
     btn.textContent = `✓ ${found} had sites · ${confirmed} confirmed no-site`;
     await renderUsage();

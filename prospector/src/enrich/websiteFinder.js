@@ -360,7 +360,7 @@ function candidateDomains(business) {
     for (const tld of ['com', 'net', 'co', 'biz', 'us']) out.push(`${b}.${tld}`);
   }
   // .com first, then cap the number of probes per lead
-  return [...new Set(out)].sort((a, z) => Number(z.endsWith('.com')) - Number(a.endsWith('.com'))).slice(0, 14);
+  return [...new Set(out)].sort((a, z) => Number(z.endsWith('.com')) - Number(a.endsWith('.com'))).slice(0, 10);
 }
 
 // Does this page belong to the business? Two strengths:
@@ -381,7 +381,7 @@ function pageMatches(html, business, finalHost, strict) {
 async function probeUrl(url, business, { strict = true } = {}) {
   try {
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 8000);
+    const t = setTimeout(() => ctrl.abort(), 6000);
     const res = await fetch(url, {
       redirect: 'follow',
       signal: ctrl.signal,
