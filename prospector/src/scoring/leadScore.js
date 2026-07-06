@@ -177,7 +177,7 @@ function buildOpeners(business, audit, { opportunityUsd, estMonthlyLeads }) {
 
   // ── Channel-specific openers ────────────────────────────────────────────
   const callScript =
-    `Hi, is this ${owner || name}? Great — my name's [your name] with Launch Media, we're a web & marketing company. ` +
+    `Hi, is this ${owner || name}? Great — my name's Christian with Launch Media, we're a web & marketing company. ` +
     `I'll be quick: I was looking up ${cat}${cityPhrase} and ${problemShort}. ${proof}, so it stood out to me — ${cost}.${competitorLine} ` +
     `The reason I'm calling: we build small businesses a brand-new website at $0 down and our AI handles the SEO, Google Ads and social media so you get more calls. ` +
     `I'd love to send you a free 3-minute video showing exactly what I'd fix first — what's the best email or cell to send that to?`;
@@ -188,10 +188,10 @@ function buildOpeners(business, audit, { opportunityUsd, estMonthlyLeads }) {
     `I came across ${name} while looking at ${cat}${cityPhrase}, and ${problemLong}. ${proof} — which is exactly why it caught my eye, because ${cost}.${competitorLine}\n\n` +
     `I run Launch Media, a web & marketing agency that builds high-converting websites for local businesses. ${offer}\n\n` +
     `Can I send over a free 3-minute video teardown of what I'd fix first? No obligation either way.\n\n` +
-    `— [Your name], Launch Media\n[your phone] · wearelaunchmedia.com`;
+    `— Christian, Launch Media\n[your phone] · wearelaunchmedia.com`;
 
   const sms =
-    `Hi ${owner || name}, this is [your name] with Launch Media. I was looking at ${cat}${cityPhrase} and ${problemShort} — ` +
+    `Hi ${owner || name}, this is Christian with Launch Media. I was looking at ${cat}${cityPhrase} and ${problemShort} — ` +
     `for a shop with ${reviews} reviews that's costing you calls. We build sites $0 down + our AI runs your SEO/ads/social. ` +
     `Can I text you a free 60-second audit?`;
 
@@ -261,7 +261,7 @@ function buildScript(business, audit, { opportunityUsd }) {
       : `That's sending business to competitors who simply show up better online.`;
 
   return [
-    `▸ OPENING\n"${askFor} Hey, my name's [your name] with Launch Media — we're a web & marketing company. Did I catch you at an okay time for 60 seconds? I promise to be quick."\n(If "I'm busy" → "Totally get it — 30 seconds, and if it's not relevant I'll let you go. Fair?")`,
+    `▸ OPENING\n"${askFor} Hey, my name's Christian with Launch Media — we're a web & marketing company. Did I catch you at an okay time for 60 seconds? I promise to be quick."\n(If "I'm busy" → "Totally get it — 30 seconds, and if it's not relevant I'll let you go. Fair?")`,
 
     `▸ THE REASON FOR THE CALL (HOOK)\n"So the reason I'm calling specifically — I was looking at ${cat}${cityPhrase} and noticed ${problemLong}. And with ${reviews} reviews at ${rating}, you're clearly one of the better shops around, which is exactly why it jumped out at me. ${costLine}${competitorLine}"`,
 
@@ -275,8 +275,8 @@ function buildScript(business, audit, { opportunityUsd }) {
 
     `▸ COMMON OBJECTIONS${siteRecovery}\n• "I already have a website / a guy." → "Love that — most sites we take over were quietly losing the owner calls. I'll still send the free teardown; if yours is already crushing it, you get a free second opinion."\n• "I'm too busy / not interested." → "Completely understand — that's the point. You run the business, we handle the marketing. Can I just send the free video and you look when you have a sec?"\n• "How much is it?" → "Plans start around $750/month with $0 down to build — but I don't want to talk price until I show you what we'd do and what it's worth. Fair?"\n• "Just send me info." → "Will do — what's the best email? I'll send a personalized 3-minute teardown, not a generic brochure."`,
 
-    `▸ VOICEMAIL (if no answer)\n"Hi ${name}, this is [your name] with Launch Media — we build websites and run marketing for ${cat}${cityPhrase}. I noticed ${problemLong} and put together a quick free teardown for you. Give me a call back at [your number], or I'll try you again. Thanks!"`,
+    `▸ VOICEMAIL (if no answer)\n"Hi ${name}, this is Christian with Launch Media — we build websites and run marketing for ${cat}${cityPhrase}. I noticed ${problemLong} and put together a quick free teardown for you. Give me a call back at [your number], or I'll try you again. Thanks!"`,
 
-    `▸ FOLLOW-UP TEXT (same day)\n"Hi ${name}, [your name] with Launch Media here — just left you a voicemail. I made a free 3-min video on your online presence (starting with ${topProblem}). Want me to send it? No pitch, just the teardown."`,
+    `▸ FOLLOW-UP TEXT (same day)\n"Hi ${name}, Christian with Launch Media here — just left you a voicemail. I made a free 3-min video on your online presence (starting with ${topProblem}). Want me to send it? No pitch, just the teardown."`,
   ].join('\n\n');
 }
