@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# One-shot setup for Oxsome Prospector on a fresh DigitalOcean Droplet
+# One-shot setup for Launch Media Prospector on a fresh DigitalOcean Droplet
 # (Ubuntu 22.04 / 24.04). Installs Node, installs the app, writes config,
 # and runs it 24/7 under systemd (auto-restart + start-on-boot).
 #
@@ -18,9 +18,9 @@ set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"   # .../prospector
 PORT="${APP_PORT:-4317}"
-SERVICE=surge-prospector
+SERVICE=launch-media-prospector
 
-echo "==> Oxsome Prospector setup (app dir: $APP_DIR, port: $PORT)"
+echo "==> Launch Media Prospector setup (app dir: $APP_DIR, port: $PORT)"
 
 if [ -z "${DASH_PASS:-}" ]; then
   echo "!! DASH_PASS is not set — refusing to deploy an unprotected dashboard."
@@ -58,11 +58,13 @@ umask 077
 cat > "$APP_DIR/.env" <<EOF
 GOOGLE_PLACES_API_KEY=${PLACES_KEY:-}
 PAGESPEED_API_KEY=${PAGESPEED_KEY:-}
-DASHBOARD_USER=surge
+GEMINI_API_KEY=${GEMINI_KEY:-}
 DASHBOARD_PASSWORD=${DASH_PASS}
 PORT=${PORT}
 DATA_DIR=${DATA_DIR}
 AUDIT_MODE=light
+AUTO_SCAN=true
+AUTO_ENRICH=true
 EOF
 umask 022
 
@@ -71,7 +73,7 @@ echo "==> Installing systemd service..."
 NODE_BIN="$(command -v node)"
 cat > /etc/systemd/system/${SERVICE}.service <<EOF
 [Unit]
-Description=Oxsome Prospector lead finder
+Description=Launch Media Prospector lead finder
 After=network.target
 
 [Service]
@@ -95,9 +97,9 @@ IP="$(curl -s --max-time 4 http://169.254.169.254/metadata/v1/interfaces/public/
 sleep 2
 echo
 echo "============================================================"
-echo " ✅ Oxsome Prospector is running."
+echo " ✅ Launch Media Prospector is running."
 echo "    Open:     http://${IP}:${PORT}"
-echo "    Login:    user 'surge'  /  the password you set"
+echo "    Login:    just your dashboard password"
 echo "    Logs:     journalctl -u ${SERVICE} -f"
 echo "    Restart:  systemctl restart ${SERVICE}"
 echo "============================================================"
