@@ -23,8 +23,8 @@ h1,h2,h3,.brand__text { font-family: 'Space Grotesk','Inter',sans-serif; font-we
 /* Topbar */
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 26px; border-bottom: 1px solid var(--line);
-  position: sticky; top: 0; z-index: 20;
+  padding: 14px 26px; border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; z-index: 20; gap: 14px 18px; flex-wrap: wrap;
   background: rgba(7,8,15,.78); backdrop-filter: blur(12px);
 }
 .brand { display: flex; align-items: center; gap: 10px; }
@@ -47,6 +47,18 @@ h1,h2,h3,.brand__text { font-family: 'Space Grotesk','Inter',sans-serif; font-we
 .btn--ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
 .btn--ghost:hover { border-color: var(--red); color: var(--red-2); }
 .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+/* Header action toolbar — groups the buttons into one tidy, uniform set */
+.toolbar {
+  display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  background: var(--ink-2); border: 1px solid var(--line);
+  border-radius: 999px; padding: 5px;
+}
+.toolbar .btn { border: none; background: transparent; box-shadow: none;
+  font-size: 13px; font-weight: 600; padding: 9px 15px; color: var(--text); border-radius: 999px; }
+.toolbar .btn:hover { background: var(--ink-3); color: #fff; transform: none; box-shadow: none; }
+.toolbar .btn:active { background: rgba(255,45,77,.14); color: var(--red-2); }
+.toolbar__sep { width: 1px; height: 22px; background: var(--line); margin: 0 5px; flex: 0 0 auto; }
 
 /* Stats */
 .stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 22px; }
