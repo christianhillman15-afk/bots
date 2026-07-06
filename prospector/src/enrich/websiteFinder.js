@@ -417,7 +417,7 @@ async function probeUrl(url, business, { strict = true } = {}) {
     const res = await fetch(url, {
       redirect: 'follow',
       signal: ctrl.signal,
-      headers: { 'user-agent': 'Mozilla/5.0 (compatible; OxsomeProspector/1.0)' },
+      headers: { 'user-agent': 'Mozilla/5.0 (compatible; LaunchMediaProspector/1.0)' },
     });
     clearTimeout(t);
     if (!res.ok) return null;

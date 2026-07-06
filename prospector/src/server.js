@@ -47,7 +47,7 @@ function requireAuth(req, res, next) {
 function loginPage(error = false) {
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Oxsome Prospector — Login</title><style>
+<title>Launch Media Prospector — Login</title><style>
   body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
     font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
     background:radial-gradient(1000px 500px at 70% -10%,rgba(139,61,255,.18),transparent 60%),#07080f;color:#e9ebf5}
@@ -64,7 +64,7 @@ function loginPage(error = false) {
 </style></head><body>
 <form class="box" method="POST" action="/login">
   <div class="mark">⚡</div>
-  <h1>Ox<span style="color:#ff2d4d">some</span> Prospector</h1>
+  <h1>Launch <span style="color:#ff2d4d">Media</span> Prospector</h1>
   <div class="sub">Enter your password to continue</div>
   <input type="password" name="password" placeholder="Password" autofocus autocomplete="current-password"/>
   <button type="submit">Unlock →</button>
@@ -290,7 +290,7 @@ export function startServer() {
       { header: 'sms_opener', get: (l) => csvOpener(l, 'sms') },
     ];
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename="oxsome-leads.csv"');
+    res.setHeader('Content-Disposition', 'attachment; filename="launchmedia-leads.csv"');
     res.send(toCsv(leads, cols));
   });
 
@@ -320,7 +320,7 @@ export function startServer() {
       { header: 'full_email', get: (l) => csvOpener(l, 'email') },
     ];
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename="oxsome-leads-instantly.csv"');
+    res.setHeader('Content-Disposition', 'attachment; filename="launchmedia-leads-instantly.csv"');
     res.send(toCsv(leads, cols));
   });
 
@@ -337,7 +337,7 @@ export function startServer() {
 
   // 0.0.0.0 so it's reachable when hosted (containers/PaaS), not just locally.
   app.listen(config.port, '0.0.0.0', () => {
-    log.title('OXSOME PROSPECTOR — dashboard');
+    log.title('LAUNCH MEDIA PROSPECTOR — dashboard');
     log.ok(`http://localhost:${config.port}`);
     if (!isLive()) log.warn('DEMO MODE (no Places key). Scans use sample data.');
     if (config.dashboardPassword) log.ok('Password login required.');

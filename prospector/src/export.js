@@ -39,7 +39,7 @@ export function writeCsv(leads, outPath) {
   const stamp = new Date().toISOString().slice(0, 10);
   const file = outPath
     ? resolve(process.cwd(), outPath)
-    : resolve(config.exportDir, `oxsome-leads-${stamp}.csv`);
+    : resolve(config.exportDir, `launchmedia-leads-${stamp}.csv`);
   writeFileSync(file, toCsv(leads, COLUMNS));
   return file;
 }

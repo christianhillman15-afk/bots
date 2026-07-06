@@ -81,7 +81,7 @@ async function cmdScan(opts) {
   const maxPerCity = Number(opts.max) || 20;
   const minScore = Number(opts['min-score']) || 0;
 
-  log.title('OXSOME PROSPECTOR — scan');
+  log.title('LAUNCH MEDIA PROSPECTOR — scan');
   if (!isLive()) {
     log.warn(color.yellow('DEMO MODE') + ' — no GOOGLE_PLACES_API_KEY set. Using realistic sample data.');
     log.info(color.gray('Set the key in .env to hunt real businesses nationwide.'));
@@ -187,7 +187,7 @@ function cmdServe(opts) {
 async function cmdFindEmails(opts) {
   const store = new LeadStore();
   const tty = process.stdout.isTTY;
-  log.title('OXSOME PROSPECTOR — find emails');
+  log.title('LAUNCH MEDIA PROSPECTOR — find emails');
   log.info('Visiting lead websites to pull contact emails (sites only; no-website leads are phone-only)…');
   const res = await enrichEmails({
     store,
@@ -204,7 +204,7 @@ async function cmdFindEmails(opts) {
 async function cmdVerifyWebsites(opts) {
   const store = new LeadStore();
   const tty = process.stdout.isTTY;
-  log.title('OXSOME PROSPECTOR — verify missing websites');
+  log.title('LAUNCH MEDIA PROSPECTOR — verify missing websites');
   if (!searchReady()) {
     log.err('No web-search key set. Add ANTHROPIC_API_KEY (Claude) or GEMINI_API_KEY to .env.');
     return;
@@ -230,7 +230,7 @@ async function cmdFindOwners(opts) {
     log.err('No web-search key set. Add GEMINI_API_KEY (or ANTHROPIC_API_KEY) to .env.');
     return;
   }
-  log.title('OXSOME PROSPECTOR — find owner names');
+  log.title('LAUNCH MEDIA PROSPECTOR — find owner names');
   const res = await enrichOwners({
     store,
     limit: Number(opts.limit) || 0,
@@ -255,7 +255,7 @@ async function cmdCheck(opts) {
     categoryLabel: opts.category || '',
   };
   if (!business.name) { log.err('Give a name: check --name "Business Name" [--phone .. --city .. --state ..]'); return; }
-  log.title('OXSOME PROSPECTOR — website spot-check');
+  log.title('LAUNCH MEDIA PROSPECTOR — website spot-check');
   log.info(`Business: ${business.name}${business.city ? ` · ${business.city}, ${business.state}` : ''}${business.phone ? ` · ${business.phone}` : ''}`);
 
   log.info('1) Free domain guess (name → domain, probe & confirm)…');
@@ -340,7 +340,7 @@ const stripAnsi = (s) => String(s).replace(/\x1b\[[0-9;]*m/g, '');
 // ── help ───────────────────────────────────────────────────────────────────
 function help() {
   console.log(`
-${color.bold('Oxsome Prospector')} — find businesses with no/bad websites that can afford Oxsome.
+${color.bold('Launch Media Prospector')} — find businesses with no/bad websites that can afford Launch Media.
 
 ${color.bold('Usage:')} prospector <command> [options]
 

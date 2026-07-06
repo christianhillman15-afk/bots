@@ -8,8 +8,8 @@ import { config } from '../config.js';
 const cache = new Map(); // host -> { rules } | null
 
 function uaToken() {
-  // "OxsomeProspectorBot/1.0 (...)" -> "oxsomeprospectorbot"
-  return (config.userAgent.split('/')[0] || 'oxsomeprospectorbot').toLowerCase();
+  // "LaunchMediaProspectorBot/1.0 (...)" -> "launchmediaprospectorbot"
+  return (config.userAgent.split('/')[0] || 'launchmediaprospectorbot').toLowerCase();
 }
 
 async function loadRules(origin) {

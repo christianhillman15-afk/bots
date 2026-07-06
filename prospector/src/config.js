@@ -14,7 +14,7 @@ export const config = {
   port: Number(process.env.PORT) || 4317,
   userAgent:
     process.env.AUDIT_USER_AGENT ||
-    'OxsomeProspectorBot/1.0 (+https://oxsome.com; website quality audit)',
+    'LaunchMediaProspectorBot/1.0 (+https://wearelaunchmedia.com; website quality audit)',
   auditConcurrency: Number(process.env.AUDIT_CONCURRENCY) || 6,
   auditTimeoutMs: Number(process.env.AUDIT_TIMEOUT_MS) || 12000,
   // DATA_DIR lets a host mount a persistent disk so leads survive restarts.
