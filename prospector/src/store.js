@@ -1,6 +1,9 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { config } from './config.js';
+
+const HOUR = 60 * 60 * 1000;
+const KEEP_SNAPSHOTS = 48; // ~2 days of hourly history
 
 /**
  * Dependency-free JSON-backed lead store.
@@ -27,15 +30,57 @@ export class LeadStore {
     }
   }
 
-  save() {
-    if (!existsSync(config.dataDir)) mkdirSync(config.dataDir, { recursive: true });
-    const payload = {
+  /** The full store as a plain object (used for save + download backups). */
+  serialize() {
+    return {
       version: 1,
       savedAt: new Date().toISOString(),
       count: this.leads.size,
       leads: [...this.leads.values()],
     };
-    writeFileSync(this.file, JSON.stringify(payload, null, 2));
+  }
+
+  save() {
+    if (!existsSync(config.dataDir)) mkdirSync(config.dataDir, { recursive: true });
+    writeFileSync(this.file, JSON.stringify(this.serialize(), null, 2));
+    this._snapshotIfDue();
+  }
+
+  /** Keep a rolling set of timestamped snapshots so a bad write or accidental
+   * wipe never costs everything. Throttled to ~hourly; oldest are pruned. */
+  _snapshotIfDue() {
+    const now = Date.now();
+    if (this._lastSnap && now - this._lastSnap < HOUR) return;
+    this._lastSnap = now;
+    try {
+      const dir = resolve(config.dataDir, 'backups');
+      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      writeFileSync(resolve(dir, `leads-${stamp}.json`), JSON.stringify(this.serialize()));
+      const files = readdirSync(dir)
+        .filter((f) => f.startsWith('leads-') && f.endsWith('.json'))
+        .sort();
+      for (const f of files.slice(0, Math.max(0, files.length - KEEP_SNAPSHOTS))) {
+        try { unlinkSync(resolve(dir, f)); } catch { /* ignore */ }
+      }
+    } catch {
+      /* snapshots are best-effort; never block a save */
+    }
+  }
+
+  /** Restore from a backup. mode 'merge' adds missing leads (default, safe);
+   * 'replace' swaps the whole set. Returns { before, after, added }. */
+  restore(leads, mode = 'merge') {
+    const before = this.leads.size;
+    if (mode === 'replace') this.leads = new Map();
+    let added = 0;
+    for (const l of Array.isArray(leads) ? leads : []) {
+      if (!l || !l.id) continue;
+      if (!this.leads.has(l.id)) added++;
+      if (mode === 'replace' || !this.leads.has(l.id)) this.leads.set(l.id, l);
+    }
+    this.save();
+    return { before, after: this.leads.size, added };
   }
 
   /** Insert or merge a lead, preserving first-seen and outreach state. */

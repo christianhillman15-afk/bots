@@ -32,8 +32,35 @@ async function boot() {
   $('#emailBtn').addEventListener('click', findEmails);
   $('#verifyBtn').addEventListener('click', verifyWebsites);
   $('#ownersBtn').addEventListener('click', findOwners);
+  $('#backupBtn').addEventListener('click', () => { window.location = '/api/backup.json'; });
+  $('#restoreBtn').addEventListener('click', () => $('#restoreFile').click());
+  $('#restoreFile').addEventListener('change', handleRestore);
   await renderUsage();
   await refresh();
+}
+
+/** Restore leads from a backup file the user picks (merge — only adds missing). */
+async function handleRestore(e) {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = ''; // let the same file be picked again later
+  if (!file) return;
+  if (!confirm(`Restore leads from "${file.name}"?\n\nThis ADDS any leads from the backup you don't already have. It will NOT delete or overwrite your current leads.`)) return;
+  let data;
+  try { data = JSON.parse(await file.text()); }
+  catch { alert("That file isn't a valid backup — couldn't read it as JSON."); return; }
+  const btn = $('#restoreBtn'); const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '⤒ Restoring…';
+  try {
+    const r = await fetch('/api/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed');
+    alert(`✅ Restored! Added ${d.added} leads you were missing — you now have ${d.after} total.`);
+    await refresh();
+  } catch (err) {
+    alert('Restore failed: ' + (err.message || 'unknown error'));
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
 }
 
 /** Show today's web-search usage vs the safety cap so the user knows they're free. */

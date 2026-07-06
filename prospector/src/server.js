@@ -107,7 +107,7 @@ export function startServer() {
   });
 
   app.use(requireAuth); // everything below requires the password (if set)
-  app.use(express.json());
+  app.use(express.json({ limit: '96mb' })); // large enough to restore a full backup
   app.use(express.static(config.publicDir));
 
   // Metadata for the UI (filters, categories, metros, mode)
@@ -222,6 +222,27 @@ export function startServer() {
   });
 
   app.get('/api/stats', (_req, res) => res.json(summary(store.all())));
+
+  // Download a full backup of every lead (save it off-server so a lost droplet
+  // never wipes your list again).
+  app.get('/api/backup.json', (_req, res) => {
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="launchmedia-leads-backup-${stamp}.json"`);
+    res.send(JSON.stringify(store.serialize()));
+  });
+
+  // Restore leads from an uploaded backup. Default 'merge' only ADDS leads you
+  // don't already have (never deletes); 'replace' swaps the whole set.
+  app.post('/api/restore', (req, res) => {
+    if (scanning) return res.status(409).json({ error: 'Busy — a scan is running.' });
+    const body = req.body || {};
+    const leads = Array.isArray(body) ? body : body.leads;
+    if (!Array.isArray(leads)) return res.status(400).json({ error: 'That file has no leads — is it a Launch Media backup?' });
+    const mode = body.mode === 'replace' ? 'replace' : 'merge';
+    const result = store.restore(leads, mode);
+    res.json({ ok: true, mode, ...result });
+  });
 
   // Update outreach status / notes
   app.patch('/api/leads/:id', (req, res) => {
