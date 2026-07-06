@@ -5,7 +5,7 @@ import { METROS } from './data/metros.js';
 import { CATEGORIES } from './data/categories.js';
 import { runScan } from './scan.js';
 import { verifyMissingWebsites, enrichOwners, searchReady } from './enrich/websiteFinder.js';
-import { enrichEmails } from './enrich/emailFinder.js';
+import { enrichEmails, verifyEmails } from './enrich/emailFinder.js';
 import { log } from './logger.js';
 
 /**
@@ -87,6 +87,8 @@ export function createScheduler({ store, isBusy, setBusy }) {
             }
             const e = await enrichEmails({ store, limit: config.autoEnrichLimit });
             if (e.found) log.ok(`auto-emails: +${e.found} contact emails`);
+            const ev = await verifyEmails({ store, limit: config.autoEnrichLimit });
+            if (ev.processed) log.ok(`auto-verify-email: ${ev.valid} deliverable, ${ev.risky} risky`);
           } catch (err) {
             log.warn(`auto-enrich skipped: ${err.message}`);
           }

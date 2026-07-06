@@ -8,7 +8,7 @@ import { METROS, topMetros, findMetro } from './data/metros.js';
 import { CATEGORIES, findCategory, defaultCategories } from './data/categories.js';
 import { toCsv } from './util.js';
 import { scoreLead } from './scoring/leadScore.js';
-import { enrichEmails } from './enrich/emailFinder.js';
+import { enrichEmails, verifyEmails } from './enrich/emailFinder.js';
 import { verifyMissingWebsites, enrichOwners, searchReady, searchUsage, recheckLead } from './enrich/websiteFinder.js';
 import { createScheduler } from './scheduler.js';
 import { log } from './logger.js';
@@ -196,7 +196,8 @@ export function startServer() {
     scanning = true;
     try {
       const result = await enrichEmails({ store, limit: 250 });
-      res.json({ ok: true, ...result });
+      const verified = await verifyEmails({ store }); // MX-check any unverified emails (free)
+      res.json({ ok: true, ...result, verified });
     } catch (err) {
       res.status(500).json({ error: err.message });
     } finally {
@@ -325,9 +326,12 @@ export function startServer() {
         category: req.query.category || undefined,
         sort: 'score',
       })
-      .filter((l) => l.business?.email);
+      // Only leads with an email that isn't a known-dead domain — protects your
+      // sender reputation by keeping guaranteed bounces out of the campaign.
+      .filter((l) => l.business?.email && l.business?.emailStatus !== 'risky');
     const cols = [
       { header: 'email', get: (l) => l.business.email },
+      { header: 'email_status', get: (l) => l.business?.emailStatus || 'unverified' },
       { header: 'first_name', get: (l) => (l.business?.ownerName || '').split(/\s+/)[0] },
       { header: 'owner', get: (l) => l.business?.ownerName },
       { header: 'company_name', get: (l) => l.business?.name },

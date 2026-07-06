@@ -475,7 +475,7 @@ function leadCard(l) {
           <h4 class="detail__h">Contact</h4>
           <div class="kv">👤 ${b.ownerName ? `<b>${esc(b.ownerName)}</b>` : '<span class="muted">owner not found yet</span>'}</div>
           <div class="kv">📞 ${esc(b.phone || '—')}</div>
-          <div class="kv">✉️ ${b.email ? `<a href="mailto:${esc(b.email)}">${esc(b.email)}</a>` : '<span class="muted">no email found — use phone</span>'}</div>
+          <div class="kv">✉️ ${b.email ? `<a href="mailto:${esc(b.email)}">${esc(b.email)}</a>${b.emailStatus === 'valid' ? ' <span class="vbadge vbadge--ok" title="Domain accepts mail — safe to send">✓ deliverable</span>' : b.emailStatus === 'risky' ? ' <span class="vbadge vbadge--warn" title="Domain has no mail server — this would bounce, kept out of Instantly export">⚠ risky</span>' : ''}` : '<span class="muted">no email found — use phone</span>'}</div>
           <div class="kv">🌐 ${site}</div>
           <div class="kv">📍 ${esc(b.address || '')}</div>
           ${mapsHref ? `<div class="kv"><a href="${mapsHref}" target="_blank" rel="noopener">View on Google Maps ↗</a></div>` : ''}

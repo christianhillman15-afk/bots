@@ -1,7 +1,21 @@
+import { promises as dns } from 'node:dns';
 import { config } from '../config.js';
 import { isAllowed } from '../audit/robots.js';
 import { mapLimit } from '../util.js';
 import { findEmailWeb, searchReady } from './websiteFinder.js';
+
+/* Deliverability check: does the email's domain actually accept mail? We look up
+ * MX records (and fall back to an A record). Domains with neither are dead — the
+ * email would bounce, so we flag it 'risky' and keep it out of cold campaigns.
+ * Returns 'valid' | 'risky'. Pure DNS, free, no API. */
+export async function verifyMx(email) {
+  const domain = (email || '').split('@')[1];
+  if (!domain) return 'risky';
+  const mx = await dns.resolveMx(domain).catch(() => []);
+  if (mx && mx.length) return 'valid';
+  const a = await dns.resolve(domain).catch(() => []); // some tiny domains take mail on the A record
+  return a && a.length ? 'valid' : 'risky';
+}
 
 /*
  * Best-effort contact-email finder. Two sources, in order:
@@ -146,6 +160,7 @@ export async function enrichEmails({ store, limit = 0, onProgress = () => {} }) 
     if (email) {
       lead.business.email = email;
       lead.business.emailSource = source;
+      lead.business.emailStatus = await verifyMx(email); // deliverability check
       found++;
     } else {
       lead.business.emailChecked = true; // don't retry dead ends next run
@@ -155,6 +170,22 @@ export async function enrichEmails({ store, limit = 0, onProgress = () => {} }) 
   });
   store.save();
   return { processed: slice.length, found, remaining: Math.max(0, targets.length - slice.length) };
+}
+
+/** MX-check emails that were found before verification existed (free, no API). */
+export async function verifyEmails({ store, limit = 0, onProgress = () => {} }) {
+  const targets = store.all().filter((l) => l.business?.email && !l.business?.emailStatus);
+  const slice = limit > 0 ? targets.slice(0, limit) : targets;
+  let valid = 0, risky = 0, done = 0;
+  await mapLimit(slice, 8, async (lead) => {
+    const status = await verifyMx(lead.business.email);
+    lead.business.emailStatus = status;
+    status === 'valid' ? valid++ : risky++;
+    done++;
+    onProgress({ done, total: slice.length, valid, risky });
+  });
+  if (slice.length) store.save();
+  return { processed: slice.length, valid, risky, remaining: Math.max(0, targets.length - slice.length) };
 }
 
 export { needsEmail };
