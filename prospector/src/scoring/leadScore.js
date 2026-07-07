@@ -200,12 +200,25 @@ function buildOpeners(business, audit, { opportunityUsd, estMonthlyLeads }) {
     `sending ${cat} customers to your competitors${cityPhrase} (starting with: ${topProblem}). ` +
     `Want me to send it over? No pitch — just the teardown so you can fix it yourself or have us do it.`;
 
-  return [
+  // Warm, compliment-first message for social-media-only businesses: praise the
+  // following they've built, then frame the gap as "you don't OWN that audience."
+  const socialWarm =
+    `Hey ${owner || name} — first off, genuinely love what you've built on social; you've clearly got a real audience${cityPhrase}. ` +
+    `The only gap I noticed: that's rented land. Right now if someone Googles "${cat}${cityPhrase}" you don't really come up, ` +
+    `and if the platform changes its algorithm (or locks your page) tomorrow, all that audience disappears with it. ` +
+    `We'd give you a home base you actually own — a modern site at $0 down that shows up on Google and turns those followers into booked jobs. ` +
+    `Want me to send a free 3-minute video showing exactly what it'd look like for ${name}? No pressure either way.`;
+
+  const openers = [
     { channel: 'call', label: '📞 Cold call / voicemail script', text: callScript },
     { channel: 'email', label: '✉️ Cold email', text: email },
     { channel: 'sms', label: '💬 Text message', text: sms },
     { channel: 'video', label: '🎬 Loom / DM video hook', text: videoHook },
   ];
+  if (audit.presence === 'social_only') {
+    openers.push({ channel: 'social', label: '🤝 Warm message (social-only lead)', text: socialWarm });
+  }
+  return openers;
 }
 
 /* A few alternative one-line openers so the rep can pick the angle that fits. */

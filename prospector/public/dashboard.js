@@ -5,7 +5,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 const safeUrl = (u) => (/^https?:\/\//i.test(String(u || '')) ? esc(u) : '');
 
 let META = {};
-const state = { tier: '', presence: '', state: '', category: '', sort: 'score', search: '', view: 'tocall' };
+const state = { tier: '', presence: '', state: '', category: '', sort: 'score', search: '', view: 'all' };
 
 /** Update a lead's call status (called / no_answer / new). */
 function setStatus(id, status) {
@@ -241,29 +241,39 @@ async function refresh() {
     }
     if (state.state) $('#fState').value = state.state;
   }
-  renderViewTabs(data.facets);
+  renderViewTabs(data.facets, data.leads);
   let leads = data.leads;
   if (state.tier) leads = leads.filter((l) => l.score?.tier === state.tier);
-  // Call-tracking view filter
   const st = (l) => l.status || 'new';
+  // Call-tracking views
   if (state.view === 'tocall') leads = leads.filter((l) => st(l) === 'new');
   else if (state.view === 'called') leads = leads.filter((l) => st(l) === 'called');
   else if (state.view === 'noanswer') leads = leads.filter((l) => st(l) === 'no_answer');
   else if (state.view === 'callback') leads = leads.filter((l) => st(l) === 'callback');
+  // Channel views
+  else if (state.view === 'numbers') leads = leads.filter((l) => l.business?.phone);
+  else if (state.view === 'emails') leads = leads.filter((l) => l.business?.email && l.business?.emailStatus !== 'risky');
+  else if (state.view === 'social') leads = leads.filter((l) => l.presence === 'social_only');
   // 'all' shows everything
   $('#resultCount').textContent = `${leads.length} lead${leads.length === 1 ? '' : 's'}`;
   renderLeads(leads);
   renderAuto();
 }
 
-function renderViewTabs(facets) {
+function renderViewTabs(facets, allLeads = []) {
   const c = facets?.status || {};
+  const nNum = allLeads.filter((l) => l.business?.phone).length;
+  const nEmail = allLeads.filter((l) => l.business?.email && l.business?.emailStatus !== 'risky').length;
+  const nSocial = allLeads.filter((l) => l.presence === 'social_only').length;
   const tabs = [
-    ['tocall', '📞 To Call', c.new || 0],
+    ['all', '📋 All', ''],
+    ['numbers', '📞 Numbers', nNum],
+    ['emails', '✉️ Emails', nEmail],
+    ['social', '📱 Social only', nSocial],
+    ['tocall', 'To Call', c.new || 0],
     ['called', '✅ Called', c.called || 0],
     ['noanswer', '📵 No Answer', c.no_answer || 0],
     ['callback', '📅 Call Back', c.callback || 0],
-    ['all', '📋 All', ''],
   ];
   $('#viewTabs').innerHTML = tabs
     .map(([key, label, count]) =>
