@@ -320,6 +320,7 @@ export function startServer() {
   const coldEmailCols = [
     { header: 'email', get: (l) => l.business.email },
     { header: 'email_status', get: (l) => l.business?.emailStatus || 'unverified' },
+    { header: 'email_source', get: (l) => l.business?.emailSource || '' },
     { header: 'first_name', get: (l) => (l.business?.ownerName || '').split(/\s+/)[0] },
     { header: 'owner', get: (l) => l.business?.ownerName },
     { header: 'company_name', get: (l) => l.business?.name },
@@ -359,6 +360,7 @@ export function startServer() {
     { header: 'owner', get: (l) => l.business?.ownerName },
     { header: 'email', get: (l) => l.business?.email },
     { header: 'email_status', get: (l) => l.business?.emailStatus || '' },
+    { header: 'email_source', get: (l) => l.business?.emailSource || '' },
     { header: 'phone', get: (l) => l.business?.phone },
     { header: 'website', get: (l) => l.business?.website },
     { header: 'city', get: (l) => l.business?.city },

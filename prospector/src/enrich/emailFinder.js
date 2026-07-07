@@ -123,10 +123,34 @@ function scrapableSite(l) {
   return host && !SOCIAL.some((s) => host === s || host.endsWith('.' + s)) ? w : '';
 }
 
-/** A lead worth checking: no email yet, not checked, and reachable by scrape or search. */
+/** A business's own mail domain from its website (skips social/dead hosts). */
+function domainOf(website) {
+  const w = (website || '').trim();
+  if (!w) return '';
+  try {
+    const host = new URL(/^https?:\/\//i.test(w) ? w : 'https://' + w).hostname.replace(/^www\./, '').toLowerCase();
+    if (!host.includes('.') || SOCIAL.some((s) => host === s || host.endsWith('.' + s))) return '';
+    return host;
+  } catch { return ''; }
+}
+
+/** Best-guess address on the business's OWN domain — owner-name@ if we know the
+ * owner, else info@ — kept only if that domain actually accepts mail. A standard,
+ * legitimate B2B fallback when a site publishes no address. */
+async function patternEmail(business) {
+  const domain = domainOf(business.website);
+  if (!domain) return null;
+  if ((await verifyMx('x@' + domain)) !== 'valid') return null;
+  const first = ((business.ownerName || '').trim().split(/\s+/)[0] || '').toLowerCase().replace(/[^a-z]/g, '');
+  const local = first.length >= 3 ? first : 'info';
+  return `${local}@${domain}`;
+}
+
+/** A lead worth checking: no email yet, not checked, and reachable by scrape,
+ * a domain pattern, or web search. */
 function needsEmail(l) {
   if (!l.business || l.business.email || l.business.emailChecked) return false;
-  return Boolean(scrapableSite(l)) || searchReady();
+  return Boolean(scrapableSite(l)) || Boolean(domainOf(l.business?.website)) || searchReady();
 }
 
 /**
@@ -150,7 +174,12 @@ export async function enrichEmails({ store, limit = 0, onProgress = () => {} }) 
       const r = await findEmail(site);
       if (r?.email) { email = r.email; source = r.source; }
     }
-    // Fallback: web-search for the email (reaches no-website leads too).
+    // Free fallback: a role/owner address on their own domain (site-having leads).
+    if (!email) {
+      const p = await patternEmail(lead.business);
+      if (p) { email = p; source = 'pattern'; }
+    }
+    // Paid fallback: web-search for the email (reaches no-website leads too).
     if (!email && searchReady()) {
       const r = await findEmailWeb(lead.business);
       if (!r.ok) { done++; onProgress({ done, total: slice.length, found }); return; } // capped/throttled — retry later
