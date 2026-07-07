@@ -351,36 +351,67 @@ export function startServer() {
     res.send(toCsv(leads, coldEmailCols));
   });
 
-  // DAILY send list: only emailable leads NOT already exported, best-first, capped.
-  // Hand this to your sending service each day; it marks the rows exported so the
-  // next day's file is only fresh people (never emails the same person twice).
-  app.get('/api/export-daily.csv', (req, res) => {
-    const limit = Math.min(Number(req.query.limit) || 1000, 5000);
-    const ready = store
-      .all()
-      .filter((l) => emailable(l) && !l.exportedAt)
-      .sort((a, b) => (b.score?.value ?? 0) - (a.score?.value ?? 0))
-      .slice(0, limit);
+  // Lean, channel-focused columns for the daily lists.
+  const dailyEmailCols = [
+    { header: 'email', get: (l) => l.business?.email },
+    { header: 'first_name', get: (l) => (l.business?.ownerName || '').split(/\s+/)[0] },
+    { header: 'company_name', get: (l) => l.business?.name },
+    { header: 'city', get: (l) => l.business?.city },
+    { header: 'state', get: (l) => l.business?.state },
+    { header: 'icebreaker', get: (l) => icebreaker(l) },
+  ];
+  const dailyPhoneCols = [
+    { header: 'phone', get: (l) => l.business?.phone },
+    { header: 'first_name', get: (l) => (l.business?.ownerName || '').split(/\s+/)[0] },
+    { header: 'company_name', get: (l) => l.business?.name },
+    { header: 'city', get: (l) => l.business?.city },
+    { header: 'state', get: (l) => l.business?.state },
+  ];
+  // "Fresh for this channel" = has the contact + we haven't saved it before.
+  const emailFresh = (l) => emailable(l) && !l.emailSavedAt;
+  const phoneFresh = (l) => l.business?.phone && !l.phoneSavedAt;
+
+  function sendDaily(res, ready, mark, cols, label) {
     const now = new Date().toISOString();
-    for (const l of ready) l.exportedAt = now; // mark so tomorrow's file is fresh
+    for (const l of ready) l[mark] = now; // mark saved so it never repeats
     if (ready.length) store.save();
-    const stamp = now.slice(0, 10);
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename="launchmedia-daily-${stamp}.csv"`);
-    res.send(toCsv(ready, coldEmailCols));
+    res.setHeader('Content-Disposition', `attachment; filename="launchmedia-daily-${label}-${now.slice(0, 10)}.csv"`);
+    res.send(toCsv(ready, cols));
+  }
+
+  // DAILY EMAILS: only emailable leads whose email we haven't saved yet.
+  app.get('/api/export-daily-emails.csv', (req, res) => {
+    const limit = Math.min(Number(req.query.limit) || 1000, 5000);
+    const ready = store.all().filter(emailFresh)
+      .sort((a, b) => (b.score?.value ?? 0) - (a.score?.value ?? 0)).slice(0, limit);
+    sendDaily(res, ready, 'emailSavedAt', dailyEmailCols, 'emails');
   });
 
-  // How many are queued for the next daily file (for the dashboard button label).
+  // DAILY PHONES: only leads whose phone number we haven't saved yet.
+  app.get('/api/export-daily-phones.csv', (req, res) => {
+    const limit = Math.min(Number(req.query.limit) || 1000, 5000);
+    const ready = store.all().filter(phoneFresh)
+      .sort((a, b) => (b.score?.value ?? 0) - (a.score?.value ?? 0)).slice(0, limit);
+    sendDaily(res, ready, 'phoneSavedAt', dailyPhoneCols, 'phones');
+  });
+
+  // Counts for the dashboard button labels.
   app.get('/api/daily-count', (_req, res) => {
-    res.json({ ready: store.all().filter((l) => emailable(l) && !l.exportedAt).length });
+    const all = store.all();
+    res.json({ emailsReady: all.filter(emailFresh).length, phonesReady: all.filter(phoneFresh).length });
   });
 
-  // Undo: clear the 'sent' marks so leads can be pulled into a daily file again.
-  app.post('/api/reset-exported', (_req, res) => {
+  // Undo: clear the 'saved' marks for a channel ('email' | 'phone' | 'all').
+  app.post('/api/reset-exported', (req, res) => {
+    const channel = req.query.channel || 'all';
     let n = 0;
-    for (const l of store.all()) if (l.exportedAt) { delete l.exportedAt; n++; }
+    for (const l of store.all()) {
+      if ((channel === 'all' || channel === 'email') && l.emailSavedAt) { delete l.emailSavedAt; n++; }
+      if ((channel === 'all' || channel === 'phone') && l.phoneSavedAt) { delete l.phoneSavedAt; n++; }
+    }
     store.save();
-    res.json({ ok: true, reset: n });
+    res.json({ ok: true, reset: n, channel });
   });
 
   // Refresh every lead's openers/script on boot so a deploy always applies the

@@ -163,6 +163,7 @@ select:focus, input:focus { border-color: var(--purple); }
 .vbadge { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; font-weight: 700; }
 .vbadge--ok { background: rgba(34,197,94,.14); color: var(--green); border-color: rgba(34,197,94,.4); }
 .vbadge--warn { background: rgba(255,176,32,.16); color: var(--amber); border-color: rgba(255,176,32,.5); }
+.vbadge--saved { background: rgba(47,107,255,.14); color: #7ea2ff; border-color: rgba(47,107,255,.4); }
 .act-hassite:hover { border-color: var(--amber); color: var(--amber); background: rgba(255,176,32,.1); }
 .act-recheck:hover { border-color: var(--blue); color: #7ea2ff; background: rgba(47,107,255,.12); }
 .lead__opp { text-align: right; }

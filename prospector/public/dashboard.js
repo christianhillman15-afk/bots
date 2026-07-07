@@ -35,32 +35,36 @@ async function boot() {
   $('#backupBtn').addEventListener('click', () => { window.location = '/api/backup.json'; });
   $('#restoreBtn').addEventListener('click', () => $('#restoreFile').click());
   $('#restoreFile').addEventListener('change', handleRestore);
-  $('#dailyBtn').addEventListener('click', () => {
-    window.location = '/api/export-daily.csv?limit=1000';
-    setTimeout(() => { renderDailyCount(); refresh(); }, 2000); // rows get marked sent
+  $('#dailyEmailBtn').addEventListener('click', () => {
+    window.location = '/api/export-daily-emails.csv?limit=1000';
+    setTimeout(() => { renderDailyCount(); refresh(); }, 2000); // emails get marked saved
+  });
+  $('#dailyPhoneBtn').addEventListener('click', () => {
+    window.location = '/api/export-daily-phones.csv?limit=1000';
+    setTimeout(() => { renderDailyCount(); refresh(); }, 2000); // phones get marked saved
   });
   $('#resetDailyLink').addEventListener('click', async (e) => {
     e.preventDefault();
-    if (!confirm('Reset the daily send-list?\n\nThis clears the "already sent" marks so EVERY emailable lead can be pulled into a Daily CSV again. Use this if you need to re-send or pulled a file by mistake.')) return;
-    const r = await fetch('/api/reset-exported', { method: 'POST' });
+    if (!confirm('Reset BOTH daily send-lists (emails + phones)?\n\nThis clears the "already saved" marks so every email and phone can be pulled into a Daily CSV again. Use this if you need to re-pull.')) return;
+    const r = await fetch('/api/reset-exported?channel=all', { method: 'POST' });
     const d = await r.json();
-    alert(`Reset ${d.reset} leads — they can go in the next Daily CSV again.`);
-    renderDailyCount();
+    alert(`Reset ${d.reset} saved marks — those leads can go in the next Daily CSVs again.`);
+    renderDailyCount(); refresh();
   });
   await renderUsage();
   await renderDailyCount();
   await refresh();
 }
 
-/** Show how many fresh emailable leads are queued for the next Daily CSV. */
+/** Show how many fresh emails / phones are queued for each daily list. */
 async function renderDailyCount() {
-  const btn = $('#dailyBtn');
-  if (!btn) return;
   try {
-    const { ready } = await fetch('/api/daily-count').then((r) => r.json());
-    btn.textContent = `📤 Daily CSV${ready ? ` (${ready})` : ''}`;
-    btn.title = `${ready} new emailable leads ready to send. Downloads them and marks them sent so nobody's emailed twice.`;
-  } catch { /* leave default label */ }
+    const { emailsReady, phonesReady } = await fetch('/api/daily-count').then((r) => r.json());
+    const eb = $('#dailyEmailBtn');
+    if (eb) { eb.textContent = `📤 Daily Emails${emailsReady ? ` (${emailsReady})` : ''}`; eb.title = `${emailsReady} new emails not yet saved. Downloads them and marks them saved so no email repeats.`; }
+    const pb = $('#dailyPhoneBtn');
+    if (pb) { pb.textContent = `📞 Daily Phones${phonesReady ? ` (${phonesReady})` : ''}`; pb.title = `${phonesReady} new phone numbers not yet saved. Downloads them and marks them saved so no number repeats.`; }
+  } catch { /* leave default labels */ }
 }
 
 /** Restore leads from a backup file the user picks (merge — only adds missing). */
@@ -498,8 +502,8 @@ function leadCard(l) {
         <div class="detail__side">
           <h4 class="detail__h">Contact</h4>
           <div class="kv">👤 ${b.ownerName ? `<b>${esc(b.ownerName)}</b>` : '<span class="muted">owner not found yet</span>'}</div>
-          <div class="kv">📞 ${esc(b.phone || '—')}</div>
-          <div class="kv">✉️ ${b.email ? `<a href="mailto:${esc(b.email)}">${esc(b.email)}</a>${b.emailStatus === 'valid' ? ' <span class="vbadge vbadge--ok" title="Domain accepts mail — safe to send">✓ deliverable</span>' : b.emailStatus === 'risky' ? ' <span class="vbadge vbadge--warn" title="Domain has no mail server — this would bounce, kept out of Instantly export">⚠ risky</span>' : ''}` : '<span class="muted">no email found — use phone</span>'}</div>
+          <div class="kv">📞 ${esc(b.phone || '—')}${l.phoneSavedAt ? ' <span class="vbadge vbadge--saved" title="This phone number was already included in a Daily Phones export">✓ saved</span>' : ''}</div>
+          <div class="kv">✉️ ${b.email ? `<a href="mailto:${esc(b.email)}">${esc(b.email)}</a>${b.emailStatus === 'valid' ? ' <span class="vbadge vbadge--ok" title="Domain accepts mail — safe to send">✓ deliverable</span>' : b.emailStatus === 'risky' ? ' <span class="vbadge vbadge--warn" title="Domain has no mail server — this would bounce, kept out of exports">⚠ risky</span>' : ''}${l.emailSavedAt ? ' <span class="vbadge vbadge--saved" title="This email was already included in a Daily Emails export">✓ saved</span>' : ''}` : '<span class="muted">no email found — use phone</span>'}</div>
           <div class="kv">🌐 ${site}</div>
           <div class="kv">📍 ${esc(b.address || '')}</div>
           ${mapsHref ? `<div class="kv"><a href="${mapsHref}" target="_blank" rel="noopener">View on Google Maps ↗</a></div>` : ''}
