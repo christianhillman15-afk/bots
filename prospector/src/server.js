@@ -351,22 +351,31 @@ export function startServer() {
     res.send(toCsv(leads, coldEmailCols));
   });
 
-  // Lean, channel-focused columns for the daily lists.
-  const dailyEmailCols = [
+  // Full daily columns — everything a sender/caller needs: contact, context, and
+  // the complete email, SMS, and call scripts. Used for both daily lists.
+  const dailyCols = [
+    { header: 'company_name', get: (l) => l.business?.name },
+    { header: 'first_name', get: (l) => (l.business?.ownerName || '').split(/\s+/)[0] },
+    { header: 'owner', get: (l) => l.business?.ownerName },
     { header: 'email', get: (l) => l.business?.email },
-    { header: 'first_name', get: (l) => (l.business?.ownerName || '').split(/\s+/)[0] },
-    { header: 'company_name', get: (l) => l.business?.name },
-    { header: 'city', get: (l) => l.business?.city },
-    { header: 'state', get: (l) => l.business?.state },
-    { header: 'icebreaker', get: (l) => icebreaker(l) },
-  ];
-  const dailyPhoneCols = [
+    { header: 'email_status', get: (l) => l.business?.emailStatus || '' },
     { header: 'phone', get: (l) => l.business?.phone },
-    { header: 'first_name', get: (l) => (l.business?.ownerName || '').split(/\s+/)[0] },
-    { header: 'company_name', get: (l) => l.business?.name },
+    { header: 'website', get: (l) => l.business?.website },
     { header: 'city', get: (l) => l.business?.city },
     { header: 'state', get: (l) => l.business?.state },
+    { header: 'problem', get: (l) => l.audit?.problems?.[0]?.label },
+    { header: 'reviews', get: (l) => l.business?.reviewCount },
+    { header: 'rating', get: (l) => l.business?.rating },
+    { header: 'score', get: (l) => l.score?.value },
+    { header: 'tier', get: (l) => l.score?.tier },
+    { header: 'est_opportunity_mo', get: (l) => l.score?.opportunityUsd },
+    { header: 'icebreaker', get: (l) => icebreaker(l) },
+    { header: 'email_script', get: (l) => csvOpener(l, 'email') },
+    { header: 'sms_script', get: (l) => csvOpener(l, 'sms') },
+    { header: 'call_script', get: (l) => l.score?.script || csvOpener(l, 'call') },
   ];
+  const dailyEmailCols = dailyCols;
+  const dailyPhoneCols = dailyCols;
   // "Fresh for this channel" = has the contact + we haven't saved it before.
   const emailFresh = (l) => emailable(l) && !l.emailSavedAt;
   const phoneFresh = (l) => l.business?.phone && !l.phoneSavedAt;
