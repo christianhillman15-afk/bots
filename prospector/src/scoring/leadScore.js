@@ -188,7 +188,7 @@ function buildOpeners(business, audit, { opportunityUsd, estMonthlyLeads }) {
     `I came across ${name} while looking at ${cat}${cityPhrase}, and ${problemLong}. ${proof} — which is exactly why it caught my eye, because ${cost}.${competitorLine}\n\n` +
     `I run Launch Media, a web & marketing agency that builds high-converting websites for local businesses. ${offer}\n\n` +
     `Can I send over a free 3-minute video teardown of what I'd fix first? No obligation either way.\n\n` +
-    `— Christian, Launch Media\n[your phone] · wearelaunchmedia.com`;
+    `— Christian, Launch Media\n(612) 443-9490 · wearelaunchmedia.com`;
 
   const sms =
     `Hi ${owner || name}, this is Christian with Launch Media. I was looking at ${cat}${cityPhrase} and ${problemShort} — ` +
@@ -275,7 +275,7 @@ function buildScript(business, audit, { opportunityUsd }) {
 
     `▸ COMMON OBJECTIONS${siteRecovery}\n• "I already have a website / a guy." → "Love that — most sites we take over were quietly losing the owner calls. I'll still send the free teardown; if yours is already crushing it, you get a free second opinion."\n• "I'm too busy / not interested." → "Completely understand — that's the point. You run the business, we handle the marketing. Can I just send the free video and you look when you have a sec?"\n• "How much is it?" → "Plans start around $750/month with $0 down to build — but I don't want to talk price until I show you what we'd do and what it's worth. Fair?"\n• "Just send me info." → "Will do — what's the best email? I'll send a personalized 3-minute teardown, not a generic brochure."`,
 
-    `▸ VOICEMAIL (if no answer)\n"Hi ${name}, this is Christian with Launch Media — we build websites and run marketing for ${cat}${cityPhrase}. I noticed ${problemLong} and put together a quick free teardown for you. Give me a call back at [your number], or I'll try you again. Thanks!"`,
+    `▸ VOICEMAIL (if no answer)\n"Hi ${name}, this is Christian with Launch Media — we build websites and run marketing for ${cat}${cityPhrase}. I noticed ${problemLong} and put together a quick free teardown for you. Give me a call back at (612) 443-9490, or I'll try you again. Thanks!"`,
 
     `▸ FOLLOW-UP TEXT (same day)\n"Hi ${name}, Christian with Launch Media here — just left you a voicemail. I made a free 3-min video on your online presence (starting with ${topProblem}). Want me to send it? No pitch, just the teardown."`,
   ].join('\n\n');
