@@ -84,6 +84,47 @@ export const METROS = [
   { city: 'Birmingham', state: 'AL', population: 200000, metroPopulation: 1110000, lat: 33.5186, lng: -86.8104 },
 ];
 
+// Expansion tier — more populous US cities nationwide. Coordinates are omitted
+// (the Places text query "<trade> in <City>, <ST>" carries the location); the
+// state disambiguates same-name cities. Populations are approximate (they only
+// bucket the market-size score). This roughly triples the geographic universe.
+const MORE_CITIES = [
+  ['Atlanta', 'GA', 500000, 6100000], ['Miami', 'FL', 440000, 6100000], ['Minneapolis', 'MN', 430000, 3700000],
+  ['Sacramento', 'CA', 525000, 2400000], ['Kansas City', 'MO', 510000, 2200000], ['Tampa', 'FL', 400000, 3200000],
+  ['New Orleans', 'LA', 380000, 1300000], ['Cleveland', 'OH', 370000, 2000000], ['Pittsburgh', 'PA', 300000, 2300000],
+  ['Cincinnati', 'OH', 310000, 2200000], ['Raleigh', 'NC', 470000, 1400000], ['Tucson', 'AZ', 545000, 1050000],
+  ['Albuquerque', 'NM', 560000, 920000], ['Fresno', 'CA', 545000, 1000000], ['Mesa', 'AZ', 510000, 4900000],
+  ['Omaha', 'NE', 490000, 970000], ['Colorado Springs', 'CO', 480000, 750000], ['Long Beach', 'CA', 460000, 12900000],
+  ['Virginia Beach', 'VA', 460000, 1800000], ['Oakland', 'CA', 440000, 4700000], ['Tulsa', 'OK', 410000, 1000000],
+  ['Arlington', 'TX', 395000, 7600000], ['Aurora', 'CO', 390000, 2960000], ['Bakersfield', 'CA', 400000, 900000],
+  ['Wichita', 'KS', 400000, 640000], ['Honolulu', 'HI', 350000, 1000000], ['Anaheim', 'CA', 350000, 3200000],
+  ['Santa Ana', 'CA', 310000, 3200000], ['Riverside', 'CA', 320000, 4600000], ['Corpus Christi', 'TX', 320000, 420000],
+  ['Lexington', 'KY', 320000, 520000], ['Henderson', 'NV', 320000, 2300000], ['Stockton', 'CA', 320000, 780000],
+  ['Saint Paul', 'MN', 310000, 3700000], ['Newark', 'NJ', 310000, 19500000], ['Greensboro', 'NC', 300000, 780000],
+  ['Plano', 'TX', 285000, 7600000], ['Lincoln', 'NE', 290000, 340000], ['Fort Wayne', 'IN', 265000, 420000],
+  ['Chandler', 'AZ', 280000, 4900000], ['Toledo', 'OH', 270000, 640000], ['Madison', 'WI', 270000, 680000],
+  ['Reno', 'NV', 265000, 490000], ['Scottsdale', 'AZ', 240000, 4900000], ['Chesapeake', 'VA', 250000, 1800000],
+  ['Winston-Salem', 'NC', 250000, 680000], ['Norfolk', 'VA', 235000, 1800000], ['Irving', 'TX', 255000, 7600000],
+  ['Garland', 'TX', 245000, 7600000], ['Richmond', 'VA', 230000, 1300000], ['Spokane', 'WA', 230000, 590000],
+  ['Baton Rouge', 'LA', 225000, 870000], ['Tacoma', 'WA', 220000, 4000000], ['Des Moines', 'IA', 215000, 700000],
+  ['Grand Rapids', 'MI', 200000, 1080000], ['Huntsville', 'AL', 220000, 490000], ['Providence', 'RI', 190000, 1600000],
+  ['Knoxville', 'TN', 190000, 870000], ['Worcester', 'MA', 205000, 950000], ['Rochester', 'NY', 210000, 1080000],
+  ['Buffalo', 'NY', 275000, 1130000], ['Little Rock', 'AR', 200000, 740000], ['Fort Lauderdale', 'FL', 180000, 6100000],
+  ['Chattanooga', 'TN', 180000, 560000], ['Fort Collins', 'CO', 170000, 360000], ['Sioux Falls', 'SD', 190000, 280000],
+  ['Springfield', 'MO', 170000, 470000], ['Salem', 'OR', 175000, 430000], ['Eugene', 'OR', 175000, 380000],
+  ['Dayton', 'OH', 140000, 800000], ['Savannah', 'GA', 145000, 400000], ['Cape Coral', 'FL', 200000, 780000],
+  ['Peoria', 'AZ', 190000, 4900000], ['Jackson', 'MS', 150000, 590000], ['Montgomery', 'AL', 195000, 380000],
+  ['Shreveport', 'LA', 185000, 390000], ['Akron', 'OH', 190000, 700000], ['Augusta', 'GA', 200000, 610000],
+  ['Columbus', 'GA', 205000, 330000], ['Frisco', 'TX', 210000, 7600000], ['McKinney', 'TX', 200000, 7600000],
+].map(([city, state, population, metroPopulation]) => ({ city, state, population, metroPopulation }));
+
+// Only add cities not already listed above (avoid scanning the same place twice).
+const _seen = new Set(METROS.map((m) => `${m.city}|${m.state}`.toLowerCase()));
+for (const m of MORE_CITIES) {
+  const k = `${m.city}|${m.state}`.toLowerCase();
+  if (!_seen.has(k)) { _seen.add(k); METROS.push(m); }
+}
+
 /** States with strict "mini-TCPA" laws — flagged for phone/SMS outreach. */
 export const STRICT_OUTREACH_STATES = new Set(['FL', 'OK', 'WA', 'TX']);
 
