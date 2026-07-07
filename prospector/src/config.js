@@ -28,16 +28,18 @@ export const config = {
   dashboardPassword: process.env.DASHBOARD_PASSWORD?.trim() || '',
   // Auto-pilot: when on, the app scans on a schedule, rotating across all
   // metros × categories so leads keep accumulating with no manual clicks.
-  // Defaults are tuned to stay inside Google's free 1,000 searches/month.
+  // Defaults target ~1,000 fresh leads/day: 24 ticks/day × 5 categories × ~20
+  // businesses ≈ ~120 searches/day (~3,600/mo) — inside Google's $200/mo free
+  // credit. Turn these DOWN to spend less, UP (with billing) to find more.
   autoScan: /^(1|true|yes|on)$/i.test(process.env.AUTO_SCAN || ''),
-  autoScanIntervalMin: Number(process.env.AUTO_SCAN_INTERVAL_MIN) || 180,
-  autoScanChunk: Number(process.env.AUTO_SCAN_CHUNK) || 3, // categories per tick
+  autoScanIntervalMin: Number(process.env.AUTO_SCAN_INTERVAL_MIN) || 60,
+  autoScanChunk: Number(process.env.AUTO_SCAN_CHUNK) || 5, // categories per tick
   autoScanMaxPerCity: Number(process.env.AUTO_SCAN_MAX) || 20,
-  // After each auto-scan, also verify missing websites + find emails (ON by
-  // default; set AUTO_ENRICH=false to disable). autoEnrichLimit caps how many
-  // leads get enriched per tick to stay within free quotas.
+  // After each auto-scan, also find emails + verify + owners (ON by default;
+  // set AUTO_ENRICH=false to disable). autoEnrichLimit caps how many leads get
+  // enriched per tick; the daily search cap still bounds paid API usage.
   autoEnrich: !/^(0|false|no|off)$/i.test(process.env.AUTO_ENRICH || ''),
-  autoEnrichLimit: Number(process.env.AUTO_ENRICH_LIMIT) || 40,
+  autoEnrichLimit: Number(process.env.AUTO_ENRICH_LIMIT) || 120,
   // Website verification — searches the live web to catch real sites Google
   // Places didn't list, so "no website" leads are accurate. Works with EITHER
   // Claude (web search tool) or Gemini (Google Search grounding); Claude wins

@@ -25,7 +25,8 @@
         <button id="emailBtn" class="btn btn--ghost" title="Scrape lead sites AND web-search for emails on no-website leads (uses search budget)">✉️ Find emails</button>
         <button id="rescoreBtn" class="btn btn--ghost" title="Regenerate openers + full script on every lead">↻ Refresh scripts</button>
         <span class="toolbar__sep"></span>
-        <button id="instantlyBtn" class="btn btn--ghost" title="Download only leads with an email, formatted for Instantly/Smartlead">→ Instantly CSV</button>
+        <button id="dailyBtn" class="btn btn--ghost" title="Download only NEW emailable leads since your last pull — hand to your sending service. Marks them so nobody is emailed twice.">📤 Daily CSV</button>
+        <button id="instantlyBtn" class="btn btn--ghost" title="Download ALL emailable leads (use if your sending service removes duplicates itself)">→ Full email CSV</button>
         <button id="exportBtn" class="btn btn--ghost" title="Download all filtered leads as a spreadsheet">⬇ Export CSV</button>
         <span class="toolbar__sep"></span>
         <button id="backupBtn" class="btn btn--ghost" title="Download a full backup of ALL your leads to your computer — do this regularly so a server problem can never wipe them">💾 Backup</button>
@@ -120,6 +121,7 @@
 
   <div class="footnote muted">
     Surfaces publicly available business info for legitimate B2B prospecting. You are responsible for CAN-SPAM / TCPA / state compliance and honoring opt-outs. Not legal advice. See README.
+    <br><a href="#" id="resetDailyLink" title="Clears the 'already sent' marks so every emailable lead can be pulled into a Daily CSV again">↺ Reset the daily send-list</a>
   </div>
 
   <script src="dashboard.js"></script>

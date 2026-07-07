@@ -316,8 +316,27 @@ export function startServer() {
     res.send(toCsv(leads, cols));
   });
 
-  // Instantly-ready export: only leads that HAVE an email, with clean columns
-  // (+ a personalization "icebreaker") ready to upload to Instantly/Smartlead.
+  // Shared column set for cold-email exports (email service-ready).
+  const coldEmailCols = [
+    { header: 'email', get: (l) => l.business.email },
+    { header: 'email_status', get: (l) => l.business?.emailStatus || 'unverified' },
+    { header: 'first_name', get: (l) => (l.business?.ownerName || '').split(/\s+/)[0] },
+    { header: 'owner', get: (l) => l.business?.ownerName },
+    { header: 'company_name', get: (l) => l.business?.name },
+    { header: 'phone', get: (l) => l.business?.phone },
+    { header: 'website', get: (l) => l.business?.website },
+    { header: 'city', get: (l) => l.business?.city },
+    { header: 'state', get: (l) => l.business?.state },
+    { header: 'problem', get: (l) => l.audit?.problems?.[0]?.label },
+    { header: 'est_opportunity_mo', get: (l) => l.score?.opportunityUsd },
+    { header: 'icebreaker', get: (l) => icebreaker(l) },
+    { header: 'full_email', get: (l) => csvOpener(l, 'email') },
+  ];
+  // A lead ready to be cold-emailed: has an email that isn't a known-dead domain
+  // (keeps guaranteed bounces out and protects sender reputation).
+  const emailable = (l) => l.business?.email && l.business?.emailStatus !== 'risky';
+
+  // Instantly-ready export: ALL emailable leads (their service can suppress dupes).
   app.get('/api/export-instantly.csv', (req, res) => {
     const leads = store
       .query({
@@ -326,27 +345,42 @@ export function startServer() {
         category: req.query.category || undefined,
         sort: 'score',
       })
-      // Only leads with an email that isn't a known-dead domain — protects your
-      // sender reputation by keeping guaranteed bounces out of the campaign.
-      .filter((l) => l.business?.email && l.business?.emailStatus !== 'risky');
-    const cols = [
-      { header: 'email', get: (l) => l.business.email },
-      { header: 'email_status', get: (l) => l.business?.emailStatus || 'unverified' },
-      { header: 'first_name', get: (l) => (l.business?.ownerName || '').split(/\s+/)[0] },
-      { header: 'owner', get: (l) => l.business?.ownerName },
-      { header: 'company_name', get: (l) => l.business?.name },
-      { header: 'phone', get: (l) => l.business?.phone },
-      { header: 'website', get: (l) => l.business?.website },
-      { header: 'city', get: (l) => l.business?.city },
-      { header: 'state', get: (l) => l.business?.state },
-      { header: 'problem', get: (l) => l.audit?.problems?.[0]?.label },
-      { header: 'est_opportunity_mo', get: (l) => l.score?.opportunityUsd },
-      { header: 'icebreaker', get: (l) => icebreaker(l) },
-      { header: 'full_email', get: (l) => csvOpener(l, 'email') },
-    ];
+      .filter(emailable);
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename="launchmedia-leads-instantly.csv"');
-    res.send(toCsv(leads, cols));
+    res.send(toCsv(leads, coldEmailCols));
+  });
+
+  // DAILY send list: only emailable leads NOT already exported, best-first, capped.
+  // Hand this to your sending service each day; it marks the rows exported so the
+  // next day's file is only fresh people (never emails the same person twice).
+  app.get('/api/export-daily.csv', (req, res) => {
+    const limit = Math.min(Number(req.query.limit) || 1000, 5000);
+    const ready = store
+      .all()
+      .filter((l) => emailable(l) && !l.exportedAt)
+      .sort((a, b) => (b.score?.value ?? 0) - (a.score?.value ?? 0))
+      .slice(0, limit);
+    const now = new Date().toISOString();
+    for (const l of ready) l.exportedAt = now; // mark so tomorrow's file is fresh
+    if (ready.length) store.save();
+    const stamp = now.slice(0, 10);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="launchmedia-daily-${stamp}.csv"`);
+    res.send(toCsv(ready, coldEmailCols));
+  });
+
+  // How many are queued for the next daily file (for the dashboard button label).
+  app.get('/api/daily-count', (_req, res) => {
+    res.json({ ready: store.all().filter((l) => emailable(l) && !l.exportedAt).length });
+  });
+
+  // Undo: clear the 'sent' marks so leads can be pulled into a daily file again.
+  app.post('/api/reset-exported', (_req, res) => {
+    let n = 0;
+    for (const l of store.all()) if (l.exportedAt) { delete l.exportedAt; n++; }
+    store.save();
+    res.json({ ok: true, reset: n });
   });
 
   // Refresh every lead's openers/script on boot so a deploy always applies the

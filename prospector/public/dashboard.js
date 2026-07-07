@@ -35,8 +35,32 @@ async function boot() {
   $('#backupBtn').addEventListener('click', () => { window.location = '/api/backup.json'; });
   $('#restoreBtn').addEventListener('click', () => $('#restoreFile').click());
   $('#restoreFile').addEventListener('change', handleRestore);
+  $('#dailyBtn').addEventListener('click', () => {
+    window.location = '/api/export-daily.csv?limit=1000';
+    setTimeout(() => { renderDailyCount(); refresh(); }, 2000); // rows get marked sent
+  });
+  $('#resetDailyLink').addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (!confirm('Reset the daily send-list?\n\nThis clears the "already sent" marks so EVERY emailable lead can be pulled into a Daily CSV again. Use this if you need to re-send or pulled a file by mistake.')) return;
+    const r = await fetch('/api/reset-exported', { method: 'POST' });
+    const d = await r.json();
+    alert(`Reset ${d.reset} leads — they can go in the next Daily CSV again.`);
+    renderDailyCount();
+  });
   await renderUsage();
+  await renderDailyCount();
   await refresh();
+}
+
+/** Show how many fresh emailable leads are queued for the next Daily CSV. */
+async function renderDailyCount() {
+  const btn = $('#dailyBtn');
+  if (!btn) return;
+  try {
+    const { ready } = await fetch('/api/daily-count').then((r) => r.json());
+    btn.textContent = `📤 Daily CSV${ready ? ` (${ready})` : ''}`;
+    btn.title = `${ready} new emailable leads ready to send. Downloads them and marks them sent so nobody's emailed twice.`;
+  } catch { /* leave default label */ }
 }
 
 /** Restore leads from a backup file the user picks (merge — only adds missing). */

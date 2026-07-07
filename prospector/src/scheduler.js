@@ -76,19 +76,20 @@ export function createScheduler({ store, isBusy, setBusy }) {
         };
         log.ok(`auto-scan: +${stats.newLeads} new (${stats.leads} leads / ${stats.found} businesses)`);
 
-        // Auto-clean + enrich: verify missing websites, then find emails.
+        // Auto-enrich, EMAIL-FIRST: the daily send list needs emails, so they get
+        // the search budget before the optional extras (owners, website verify).
         if (config.autoEnrich) {
           try {
-            if (searchReady()) {
-              const v = await verifyMissingWebsites({ store, limit: config.autoEnrichLimit });
-              if (v.foundSites || v.removedOk) log.ok(`auto-verify: ${v.foundSites} real sites found, ${v.removedOk} removed (had fine sites)`);
-              const o = await enrichOwners({ store, limit: config.autoEnrichLimit });
-              if (o.found) log.ok(`auto-owners: +${o.found} owner names`);
-            }
             const e = await enrichEmails({ store, limit: config.autoEnrichLimit });
             if (e.found) log.ok(`auto-emails: +${e.found} contact emails`);
             const ev = await verifyEmails({ store, limit: config.autoEnrichLimit });
             if (ev.processed) log.ok(`auto-verify-email: ${ev.valid} deliverable, ${ev.risky} risky`);
+            if (searchReady()) {
+              const o = await enrichOwners({ store, limit: config.autoEnrichLimit });
+              if (o.found) log.ok(`auto-owners: +${o.found} owner names`);
+              const v = await verifyMissingWebsites({ store, limit: config.autoEnrichLimit });
+              if (v.foundSites || v.removedOk) log.ok(`auto-verify: ${v.foundSites} real sites found, ${v.removedOk} removed (had fine sites)`);
+            }
           } catch (err) {
             log.warn(`auto-enrich skipped: ${err.message}`);
           }
