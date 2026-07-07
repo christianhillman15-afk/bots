@@ -186,9 +186,9 @@ function buildOpeners(business, audit, { opportunityUsd, estMonthlyLeads }) {
     `Subject: ${name} — quick note about your ${cat} website\n\n` +
     `Hi ${owner || name},\n\n` +
     `I came across ${name} while looking at ${cat}${cityPhrase}, and ${problemLong}. ${proof} — which is exactly why it caught my eye, because ${cost}.${competitorLine}\n\n` +
-    `I run Launch Media, a web & marketing agency that builds high-converting websites for local businesses. ${offer}\n\n` +
+    `I run Launch Media (wearelaunchmedia.com), a web & marketing agency that builds high-converting websites for local businesses. ${offer}\n\n` +
     `Can I send over a free 3-minute video teardown of what I'd fix first? No obligation either way.\n\n` +
-    `— Christian, Launch Media\n(612) 443-9490 · wearelaunchmedia.com`;
+    `— Christian, Launch Media\n(612) 443-9490 · https://wearelaunchmedia.com`;
 
   const sms =
     `Hi ${owner || name}, this is Christian with Launch Media. I was looking at ${cat}${cityPhrase} and ${problemShort} — ` +
@@ -265,7 +265,7 @@ function buildScript(business, audit, { opportunityUsd }) {
 
     `▸ THE REASON FOR THE CALL (HOOK)\n"So the reason I'm calling specifically — I was looking at ${cat}${cityPhrase} and noticed ${problemLong}. And with ${reviews} reviews at ${rating}, you're clearly one of the better shops around, which is exactly why it jumped out at me. ${costLine}${competitorLine}"`,
 
-    `▸ CREDIBILITY\n"Quick background so you know I'm legit — Launch Media builds websites and runs marketing for local businesses, and we work with a lot of ${cat} and home-service companies just like you. [Add your proof here — e.g. 'we've built 100+ sites' or a recent client result.]"`,
+    `▸ CREDIBILITY\n"Quick background so you know I'm legit — Launch Media builds websites and runs marketing for local businesses, and we work with a lot of ${cat} and home-service companies just like you. You can check out our work at wearelaunchmedia.com."`,
 
     `▸ DISCOVERY QUESTIONS (let them talk)\n• "Right now, where do most of your new customers come from — word of mouth, Google, something else?"\n• "Have you ever had a real website, or run any Google Ads before?"\n• "If I could get your phone ringing with more ${cat} jobs, do you have the capacity to take them on?"`,
 
@@ -275,7 +275,7 @@ function buildScript(business, audit, { opportunityUsd }) {
 
     `▸ COMMON OBJECTIONS${siteRecovery}\n• "I already have a website / a guy." → "Love that — most sites we take over were quietly losing the owner calls. I'll still send the free teardown; if yours is already crushing it, you get a free second opinion."\n• "I'm too busy / not interested." → "Completely understand — that's the point. You run the business, we handle the marketing. Can I just send the free video and you look when you have a sec?"\n• "How much is it?" → "Plans start around $750/month with $0 down to build — but I don't want to talk price until I show you what we'd do and what it's worth. Fair?"\n• "Just send me info." → "Will do — what's the best email? I'll send a personalized 3-minute teardown, not a generic brochure."`,
 
-    `▸ VOICEMAIL (if no answer)\n"Hi ${name}, this is Christian with Launch Media — we build websites and run marketing for ${cat}${cityPhrase}. I noticed ${problemLong} and put together a quick free teardown for you. Give me a call back at (612) 443-9490, or I'll try you again. Thanks!"`,
+    `▸ VOICEMAIL (if no answer)\n"Hi ${name}, this is Christian with Launch Media — we build websites and run marketing for ${cat}${cityPhrase}. I noticed ${problemLong} and put together a quick free teardown for you. You can look us up at wearelaunchmedia.com, or give me a call back at (612) 443-9490. Thanks!"`,
 
     `▸ FOLLOW-UP TEXT (same day)\n"Hi ${name}, Christian with Launch Media here — just left you a voicemail. I made a free 3-min video on your online presence (starting with ${topProblem}). Want me to send it? No pitch, just the teardown."`,
   ].join('\n\n');
