@@ -190,10 +190,16 @@ function buildOpeners(business, audit, { opportunityUsd, estMonthlyLeads }) {
     `Can I send over a free 3-minute video teardown of what I'd fix first? No obligation either way.\n\n` +
     `— Christian, Launch Media\n(612) 443-9490 · https://wearelaunchmedia.com`;
 
+  // Text-message opener: the "I already built you one — can I send it over?" hook.
+  const bizShort = name.length > 26 ? name.slice(0, 24).replace(/[\s\-—,&]+$/, '') + '…' : name;
+  const smsProblem =
+    audit.presence === 'none' ? `doesn't have a website yet`
+    : audit.presence === 'social_only' ? `doesn't really have a website, just a social page`
+    : audit.presence === 'broken' ? `has a website that isn't working right now`
+    : `has a website that could be working a lot better`;
   const sms =
-    `Hi ${owner || name}, this is Christian with Launch Media. I was looking at ${cat}${cityPhrase} and ${problemShort} — ` +
-    `for a shop with ${reviews} reviews that's costing you calls. We build sites $0 down + our AI runs your SEO/ads/social. ` +
-    `Can I text you a free 60-second audit?`;
+    `Hey ${owner || 'there'}, I noticed ${bizShort} ${smsProblem} — so I went ahead and built you one to look at. ` +
+    `Mind if I send it over? — Christian, Launch Media`;
 
   const videoHook =
     `Hey ${owner || name} — I recorded you a free 3-minute video showing a few things on your online presence that are quietly ` +
