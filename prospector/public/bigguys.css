@@ -1,0 +1,44 @@
+/* ── Target profile card ─────────────────────────────────────────────────── */
+.target { border-color: rgba(255,176,32,.35); }
+.target__head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+.target__head h2 { font-size: 20px; }
+.target__tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--amber); background: rgba(255,176,32,.12); border: 1px solid rgba(255,176,32,.4);
+  padding: 4px 10px; border-radius: 999px; }
+.target__intro { color: var(--muted); font-size: 14px; line-height: 1.6; max-width: 900px; }
+.target__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-top: 16px; }
+.target__item { background: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px; }
+.target__item b { display: block; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--amber); margin-bottom: 5px; }
+.target__item p { font-size: 13px; line-height: 1.55; color: var(--text); }
+.target__item p .muted { display: block; margin-top: 3px; }
+
+/* ── Big Guy prospect cards ──────────────────────────────────────────────── */
+.bg { background: var(--ink-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; }
+.bg:hover { border-color: rgba(255,255,255,.18); }
+.bg--flag { border-color: rgba(255,45,77,.5); }
+.bg__top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.bg__name { font-family: 'Space Grotesk',sans-serif; font-size: 18px; font-weight: 700; }
+.bg__owner { color: var(--muted); font-size: 13px; }
+.bg__loc { color: var(--muted); font-size: 13px; margin-left: auto; white-space: nowrap; }
+.bg__field { display: inline-block; font-size: 12px; font-weight: 700; color: var(--blue);
+  background: rgba(47,107,255,.12); border: 1px solid rgba(47,107,255,.4);
+  padding: 3px 10px; border-radius: 999px; margin-top: 8px; }
+.bg__status { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; margin: 8px 0 0 6px; }
+.bg__status--none { color: var(--red-2); background: rgba(255,45,77,.14); border: 1px solid rgba(255,45,77,.5); }
+.bg__status--social_only { color: var(--purple); background: rgba(139,61,255,.12); border: 1px solid rgba(139,61,255,.45); }
+.bg__status--broken { color: var(--amber); background: rgba(255,176,32,.12); border: 1px solid rgba(255,176,32,.45); }
+.bg__status--template, .bg__status--outdated { color: var(--muted); background: rgba(255,255,255,.06); border: 1px solid var(--line); }
+.bg__why { font-size: 13px; line-height: 1.6; color: var(--text); margin-top: 12px; }
+.bg__why b { color: var(--green); }
+.bg__problem { font-size: 13px; line-height: 1.6; color: var(--muted); margin-top: 6px; }
+.bg__problem b { color: var(--amber); }
+.bg__contacts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.bg__contact { font-size: 13px; font-weight: 600; text-decoration: none; color: var(--text);
+  background: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; }
+.bg__contact:hover { border-color: var(--green); color: var(--green); }
+.bg__contact--dim { color: var(--muted); }
+.bg__contact--dim:hover { border-color: var(--line); color: var(--muted); cursor: default; }
+.bg__sources { margin-top: 10px; font-size: 11px; color: var(--muted); }
+.bg__sources a { color: var(--muted); text-decoration: underline dotted; margin-right: 8px; }
+.bg__sources a:hover { color: var(--blue); }
+.bg__conf { font-size: 11px; color: var(--muted); margin-left: 4px; }

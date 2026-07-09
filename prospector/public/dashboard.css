@@ -226,3 +226,21 @@ select:focus, input:focus { border-color: var(--purple); }
   .lead__revs, .lead__opp.hide-sm { display: none; }
   .detail__grid { grid-template-columns: 1fr; }
 }
+
+/* ── Page-level tabs (Prospector ⇄ Big Guys) — shared by both pages ──────── */
+.pagetabs {
+  display: flex; gap: 10px; padding: 16px 26px 0;
+  max-width: 1280px; margin: 0 auto;
+}
+.pagetab {
+  font-family: 'Space Grotesk','Inter',sans-serif; font-weight: 700; letter-spacing: .02em;
+  font-size: 17px; text-decoration: none; color: var(--muted);
+  padding: 12px 26px; border-radius: 14px 14px 0 0;
+  border: 1px solid var(--line); border-bottom: none;
+  background: var(--ink-2); transition: color .15s, background .15s;
+}
+.pagetab:hover { color: var(--text); background: var(--ink-3); }
+.pagetab--active {
+  color: #fff; background: linear-gradient(180deg, rgba(255,45,77,.18), var(--ink-3));
+  border-color: rgba(255,45,77,.5); box-shadow: 0 -6px 24px -12px rgba(255,45,77,.65);
+}
