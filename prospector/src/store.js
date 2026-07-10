@@ -160,12 +160,30 @@ export class LeadStore {
     if (presence) rows = rows.filter((l) => l.presence === presence);
     if (problem) rows = rows.filter((l) => (l.audit?.problems || []).some((p) => p.code === problem));
     if (search) {
-      const q = search.toLowerCase();
-      rows = rows.filter((l) =>
-        [l.business?.name, l.business?.address, l.business?.website, l.business?.category]
+      // Universal lookup: paste a name, phone, email, website, owner, city,
+      // zip, address, category — anything — and find the matching profile.
+      const q = search.trim().toLowerCase();
+      const qDigits = q.replace(/\D/g, ''); // pasted phone in any format
+      rows = rows.filter((l) => {
+        const b = l.business || {};
+        const hay = [
+          b.name, b.ownerName, b.email, b.phone, b.website,
+          b.address, b.city, b.state, b.zip,
+          b.category, b.categoryLabel, b.placeId,
+          l.notes, l.id,
+        ]
           .filter(Boolean)
-          .some((v) => v.toLowerCase().includes(q))
-      );
+          .join(' ␟ ')
+          .toLowerCase();
+        if (hay.includes(q)) return true;
+        // Match a phone number regardless of formatting, e.g. "(612) 443-9490",
+        // "612-443-9490", or "6124439490" all find the same lead.
+        if (qDigits.length >= 3) {
+          const phoneDigits = (b.phone || '').replace(/\D/g, '');
+          if (phoneDigits && phoneDigits.includes(qDigits)) return true;
+        }
+        return false;
+      });
     }
     const sorters = {
       score: (a, b) => (b.score?.value ?? 0) - (a.score?.value ?? 0),

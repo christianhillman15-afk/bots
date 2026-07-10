@@ -245,16 +245,20 @@ async function refresh() {
   let leads = data.leads;
   if (state.tier) leads = leads.filter((l) => l.score?.tier === state.tier);
   const st = (l) => l.status || 'new';
-  // Call-tracking views
-  if (state.view === 'tocall') leads = leads.filter((l) => st(l) === 'new');
-  else if (state.view === 'called') leads = leads.filter((l) => st(l) === 'called');
-  else if (state.view === 'noanswer') leads = leads.filter((l) => st(l) === 'no_answer');
-  else if (state.view === 'callback') leads = leads.filter((l) => st(l) === 'callback');
-  // Channel views
-  else if (state.view === 'numbers') leads = leads.filter((l) => l.business?.phone);
-  else if (state.view === 'emails') leads = leads.filter((l) => l.business?.email && l.business?.emailStatus !== 'risky');
-  else if (state.view === 'social') leads = leads.filter((l) => l.presence === 'social_only');
-  // 'all' shows everything
+  // When you're looking something up, the search wins — show the match no matter
+  // which tab is open. Otherwise apply the active view-tab filter.
+  if (!state.search) {
+    // Call-tracking views
+    if (state.view === 'tocall') leads = leads.filter((l) => st(l) === 'new');
+    else if (state.view === 'called') leads = leads.filter((l) => st(l) === 'called');
+    else if (state.view === 'noanswer') leads = leads.filter((l) => st(l) === 'no_answer');
+    else if (state.view === 'callback') leads = leads.filter((l) => st(l) === 'callback');
+    // Channel views
+    else if (state.view === 'numbers') leads = leads.filter((l) => l.business?.phone);
+    else if (state.view === 'emails') leads = leads.filter((l) => l.business?.email && l.business?.emailStatus !== 'risky');
+    else if (state.view === 'social') leads = leads.filter((l) => l.presence === 'social_only');
+    // 'all' shows everything
+  }
   $('#resultCount').textContent = `${leads.length} lead${leads.length === 1 ? '' : 's'}`;
   renderLeads(leads);
   renderAuto();
