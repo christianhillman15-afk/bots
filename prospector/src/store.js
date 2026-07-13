@@ -42,13 +42,18 @@ export class LeadStore {
 
   save() {
     if (!existsSync(config.dataDir)) mkdirSync(config.dataDir, { recursive: true });
-    writeFileSync(this.file, JSON.stringify(this.serialize(), null, 2));
-    this._snapshotIfDue();
+    // Compact (no indentation) — the file is machine-read, and pretty-printing a
+    // large store balloons the string and its builder, which OOMs small boxes.
+    // Build the JSON once and reuse it for the snapshot so we never serialize twice.
+    const json = JSON.stringify(this.serialize());
+    writeFileSync(this.file, json);
+    this._snapshotIfDue(json);
   }
 
   /** Keep a rolling set of timestamped snapshots so a bad write or accidental
-   * wipe never costs everything. Throttled to ~hourly; oldest are pruned. */
-  _snapshotIfDue() {
+   * wipe never costs everything. Throttled to ~hourly; oldest are pruned.
+   * Reuses the already-serialized JSON from save() to avoid a second stringify. */
+  _snapshotIfDue(json) {
     const now = Date.now();
     if (this._lastSnap && now - this._lastSnap < HOUR) return;
     this._lastSnap = now;
@@ -56,7 +61,7 @@ export class LeadStore {
       const dir = resolve(config.dataDir, 'backups');
       if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
       const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-      writeFileSync(resolve(dir, `leads-${stamp}.json`), JSON.stringify(this.serialize()));
+      writeFileSync(resolve(dir, `leads-${stamp}.json`), json ?? JSON.stringify(this.serialize()));
       const files = readdirSync(dir)
         .filter((f) => f.startsWith('leads-') && f.endsWith('.json'))
         .sort();
