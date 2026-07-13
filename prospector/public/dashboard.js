@@ -1,8 +1,21 @@
 const $ = (sel) => document.querySelector(sel);
 const usd = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('en-US');
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-// Only allow http(s) URLs into href attributes — blocks javascript:/data: schemes.
-const safeUrl = (u) => (/^https?:\/\//i.test(String(u || '')) ? esc(u) : '');
+// Turn a stored website into a safe, clickable href.
+// - already-absolute http(s) URLs pass through
+// - a bare domain ("shop.com", "www.shop.com/contact") gets https:// added so it
+//   actually opens instead of rendering as dead text
+// - anything with a non-http scheme (javascript:, data:, mailto:, ftp:) is rejected
+const safeUrl = (u) => {
+  const s = String(u || '').trim();
+  if (!s) return '';
+  if (/^https?:\/\//i.test(s)) return esc(s);
+  const scheme = s.match(/^([a-z][a-z0-9+.-]*):/i); // real schemes have no dot; "shop.com:8080" does
+  if (scheme && !scheme[1].includes('.')) return '';
+  const bare = s.replace(/^\/+/, '');
+  if (/^[a-z0-9]/i.test(bare) && /\./.test(bare.split(/[/?#]/)[0])) return esc('https://' + bare);
+  return '';
+};
 
 let META = {};
 const state = { tier: '', presence: '', state: '', category: '', sort: 'score', search: '', view: 'all' };
