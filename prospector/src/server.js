@@ -11,6 +11,7 @@ import { scoreLead } from './scoring/leadScore.js';
 import { enrichEmails, verifyEmails } from './enrich/emailFinder.js';
 import { verifyMissingWebsites, enrichOwners, searchReady, searchUsage, recheckLead } from './enrich/websiteFinder.js';
 import { createScheduler } from './scheduler.js';
+import { SpecialRequestStore, runSpecialRequest, HOME_SERVICE_CATEGORIES } from './specialRequests.js';
 import { log } from './logger.js';
 
 /* Constant-time string compare to avoid leaking the password via timing. */
@@ -81,6 +82,8 @@ export function startServer() {
     scanning = v;
   };
   const scheduler = createScheduler({ store, isBusy, setBusy });
+  const srStore = new SpecialRequestStore();
+  const srRunning = new Set(); // request ids currently running
 
   // Health check for hosting platforms — must stay public (before auth).
   app.get('/healthz', (_req, res) => res.json({ ok: true, leads: store.size, live: isLive() }));
@@ -220,6 +223,70 @@ export function startServer() {
       limit: Number(q.limit) || 0,
     });
     res.json({ count: leads.length, leads, facets: facets(store.all()) });
+  });
+
+  // ── Special Requests: bespoke, criteria-driven lead pulls (own tab) ────────
+  app.get('/api/special-requests', (_req, res) => {
+    res.json({ requests: srStore.list(), homeServiceCategories: HOME_SERVICE_CATEGORIES, live: isLive() });
+  });
+
+  app.get('/api/special-requests/:id', (req, res) => {
+    const r = srStore.get(req.params.id);
+    if (!r) return res.status(404).json({ error: 'Request not found' });
+    res.json({ request: r, running: srRunning.has(r.id) });
+  });
+
+  app.post('/api/special-requests', (req, res) => {
+    const b = req.body || {};
+    if (!b.location || b.location.lat == null || b.location.lng == null) {
+      return res.status(400).json({ error: 'A location with lat/lng is required.' });
+    }
+    const r = srStore.create(b);
+    res.json({ ok: true, request: r });
+  });
+
+  app.delete('/api/special-requests/:id', (req, res) => {
+    if (srRunning.has(req.params.id)) return res.status(409).json({ error: 'That request is still running.' });
+    res.json({ ok: srStore.remove(req.params.id) });
+  });
+
+  // Kick off a run in the background; the tab polls GET /:id for progress.
+  app.post('/api/special-requests/:id/run', (req, res) => {
+    const r = srStore.get(req.params.id);
+    if (!r) return res.status(404).json({ error: 'Request not found' });
+    if (srRunning.has(r.id)) return res.status(409).json({ error: 'Already running.' });
+    srRunning.add(r.id);
+    runSpecialRequest({ srStore, request: r })
+      .catch((err) => log.warn(`special-request ${r.id} failed: ${err.message}`))
+      .finally(() => srRunning.delete(r.id));
+    res.json({ ok: true, status: 'running' });
+  });
+
+  app.get('/api/special-requests/:id/export.csv', (req, res) => {
+    const r = srStore.get(req.params.id);
+    if (!r) return res.status(404).send('Request not found');
+    const cols = [
+      { header: 'company_name', get: (l) => l.company },
+      { header: 'owner', get: (l) => l.owner },
+      { header: 'email', get: (l) => l.email },
+      { header: 'email_status', get: (l) => l.emailStatus },
+      { header: 'phone', get: (l) => l.phone },
+      { header: 'address', get: (l) => l.address },
+      { header: 'website', get: (l) => l.website },
+      { header: 'city', get: (l) => l.city },
+      { header: 'state', get: (l) => l.state },
+      { header: 'category', get: (l) => l.category },
+      { header: 'reviews', get: (l) => l.reviews },
+      { header: 'rating', get: (l) => l.rating ?? '' },
+      { header: 'est_revenue_usd', get: (l) => l.estRevenueUsd || '' },
+      { header: 'crunchbase_revenue', get: (l) => l.crunchbase?.revenueRange || '' },
+      { header: 'edgar_revenue_usd', get: (l) => l.edgar?.revenueUsd || '' },
+    ];
+    const stamp = new Date().toISOString().slice(0, 10);
+    const slug = (r.title || 'special-request').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${slug}-${stamp}.csv"`);
+    res.send(toCsv(r.leads || [], cols));
   });
 
   app.get('/api/stats', (_req, res) => res.json(summary(store.all())));

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Launch Media Prospector — Special Requests</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="dashboard.css" />
+  <link rel="stylesheet" href="special.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand__mark">⚡</span>
+      <span class="brand__text">Launch <span class="accent">Media</span></span>
+      <span class="brand__sub">Special Requests</span>
+    </div>
+    <div class="topbar__right">
+      <span id="srMode" class="badge badge--demo">DEMO</span>
+      <div class="toolbar">
+        <button id="srNewBtn" class="btn btn--red" title="Define a new custom lead request">＋ New request</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Page tabs -->
+  <nav class="pagetabs">
+    <a class="pagetab" href="/">Prospector</a>
+    <a class="pagetab" href="/bigguys.html">Big Guys</a>
+    <a class="pagetab pagetab--active" href="/special.html">Special Requests</a>
+  </nav>
+
+  <main class="wrap">
+    <p class="sr-intro muted">
+      Bespoke lead pulls for specific asks — a location, a set of trades, a revenue band, and how many you want.
+      Each request keeps its own results so you can organize, re-run, and export them separately.
+    </p>
+
+    <!-- List of request "profiles" -->
+    <section id="srCards" class="sr-cards"></section>
+
+    <!-- Detail view for one request -->
+    <section id="srDetail" class="sr-detail" hidden></section>
+  </main>
+
+  <!-- New-request modal -->
+  <div id="srModal" class="sr-modal" hidden>
+    <div class="sr-modal__box">
+      <h2>New special request</h2>
+      <label>Title <input id="nrTitle" type="text" placeholder="e.g. 100 HVAC leads — Austin, TX" /></label>
+      <label>Location name <input id="nrLoc" type="text" placeholder="Woodbury, MN" /></label>
+      <div class="sr-row">
+        <label>Latitude <input id="nrLat" type="number" step="any" placeholder="44.9239" /></label>
+        <label>Longitude <input id="nrLng" type="number" step="any" placeholder="-92.9594" /></label>
+        <label>Radius (mi) <input id="nrRadius" type="number" value="20" /></label>
+      </div>
+      <label>Categories</label>
+      <div id="nrCats" class="sr-cats"></div>
+      <div class="sr-row">
+        <label>Revenue min ($) <input id="nrRevMin" type="number" value="1000000" /></label>
+        <label>Revenue max ($) <input id="nrRevMax" type="number" value="5000000" /></label>
+        <label>How many <input id="nrCount" type="number" value="100" /></label>
+      </div>
+      <p class="muted sr-hint">Tip: paste the town's coordinates from Google Maps (right-click → the lat/long at top).</p>
+      <div class="sr-modal__actions">
+        <button id="nrCancel" class="btn btn--ghost">Cancel</button>
+        <button id="nrCreate" class="btn btn--red">Create request</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footnote muted">
+    Revenue is an <b>estimate</b>: Google doesn't publish it, so we gauge it from review volume × typical job value, refined by
+    Crunchbase (private-company ranges) and SEC EDGAR (public companies) when those are connected. Verify before outreach —
+    you're responsible for CAN-SPAM / TCPA compliance.
+  </div>
+
+  <script src="special.js"></script>
+</body>
+</html>

@@ -61,6 +61,19 @@ export const config = {
     : process.env.SEARCH_DAILY_CAP !== undefined ? Number(process.env.SEARCH_DAILY_CAP)
     : process.env.SEARCH_MONTHLY_CAP !== undefined ? Number(process.env.SEARCH_MONTHLY_CAP)
     : 1400,
+
+  // ── Special Requests enrichment sources (all key-gated; no-op without keys) ──
+  // Google Programmable Search (Custom Search JSON API): structured web results
+  // for finding a company's website, owner, or email. 100 queries/day free,
+  // then ~$5/1,000. Needs BOTH an API key and a Search-Engine ID (cx).
+  googleCseApiKey: process.env.GOOGLE_CSE_API_KEY?.trim() || '',
+  googleCseCx: process.env.GOOGLE_CSE_CX?.trim() || '',
+  // Crunchbase: estimated revenue *range* for private companies it covers.
+  crunchbaseApiKey: process.env.CRUNCHBASE_API_KEY?.trim() || '',
+  // SEC EDGAR: exact reported revenue for PUBLIC US companies (free, no key).
+  // Off by default since local trades are private; flip on for big-company runs.
+  edgarEnabled: /^(1|true|yes|on)$/i.test(process.env.EDGAR_ENABLED || ''),
+  edgarUserAgent: process.env.EDGAR_USER_AGENT?.trim() || 'Launch Media Prospector christian@wearelaunchmedia.com',
 };
 
 /** True when we have a real Places key; otherwise we run on demo data. */
