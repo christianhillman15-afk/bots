@@ -65,6 +65,11 @@ DATA_DIR=${DATA_DIR}
 AUDIT_MODE=light
 AUTO_SCAN=true
 AUTO_ENRICH=true
+# Special Requests enrichment (optional; blank = feature just uses Gemini + scraping)
+GOOGLE_CSE_API_KEY=${GOOGLE_CSE_KEY:-}
+GOOGLE_CSE_CX=${GOOGLE_CSE_CX:-}
+CRUNCHBASE_API_KEY=${CRUNCHBASE_KEY:-}
+EDGAR_ENABLED=${EDGAR_ENABLED:-false}
 EOF
 umask 022
 
