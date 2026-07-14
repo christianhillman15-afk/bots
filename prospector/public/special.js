@@ -215,5 +215,6 @@ $('#srNewBtn').addEventListener('click', openModal);
 $('#nrCancel').addEventListener('click', closeModal);
 $('#nrCreate').addEventListener('click', createRequest);
 $('#srModal').addEventListener('click', (e) => { if (e.target.id === 'srModal') closeModal(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#srModal').hidden) closeModal(); });
 
 load();
