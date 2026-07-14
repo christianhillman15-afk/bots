@@ -1,7 +1,12 @@
 /* Special Requests tab — request cards, detail table, new-request modal.
    Reuses dashboard.css design tokens (--ink-*, --line, --muted, --text). */
 
-.sr-intro { max-width: 760px; margin: 4px auto 22px; text-align: center; font-size: 15px; }
+.sr-intro { max-width: 760px; margin: 4px auto 14px; text-align: center; font-size: 15px; }
+
+/* connected-sources status row */
+.sr-sources { text-align: center; font-size: 12.5px; margin: 0 auto 20px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; }
+.sr-src { padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--ink-2); color: var(--muted); cursor: default; }
+.sr-src--on { color: #79e0a8; border-color: rgba(46,204,113,.35); }
 
 /* ── request cards ─────────────────────────────────────────────────────── */
 .sr-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }

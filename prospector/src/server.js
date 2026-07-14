@@ -12,6 +12,8 @@ import { enrichEmails, verifyEmails } from './enrich/emailFinder.js';
 import { verifyMissingWebsites, enrichOwners, searchReady, searchUsage, recheckLead } from './enrich/websiteFinder.js';
 import { createScheduler } from './scheduler.js';
 import { SpecialRequestStore, runSpecialRequest, HOME_SERVICE_CATEGORIES } from './specialRequests.js';
+import { googleSearchReady } from './enrich/googleSearch.js';
+import { crunchbaseReady } from './enrich/crunchbase.js';
 import { log } from './logger.js';
 
 /* Constant-time string compare to avoid leaking the password via timing. */
@@ -227,7 +229,20 @@ export function startServer() {
 
   // ── Special Requests: bespoke, criteria-driven lead pulls (own tab) ────────
   app.get('/api/special-requests', (_req, res) => {
-    res.json({ requests: srStore.list(), homeServiceCategories: HOME_SERVICE_CATEGORIES, live: isLive() });
+    res.json({
+      requests: srStore.list(),
+      homeServiceCategories: HOME_SERVICE_CATEGORIES,
+      live: isLive(),
+      // Which enrichment sources are connected, so the tab can show status
+      // instead of the user guessing whether a key took effect.
+      sources: {
+        places: isLive(),
+        webSearch: searchReady(), // Gemini/Claude grounding
+        googleCse: googleSearchReady(),
+        crunchbase: crunchbaseReady(),
+        edgar: config.edgarEnabled,
+      },
+    });
   });
 
   app.get('/api/special-requests/:id', (req, res) => {

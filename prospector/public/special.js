@@ -27,8 +27,25 @@ async function load() {
   META = data;
   $('#srMode').textContent = data.live ? 'LIVE' : 'DEMO';
   $('#srMode').className = 'badge ' + (data.live ? 'badge--live' : 'badge--demo');
+  renderSources(data.sources);
   renderCards(data.requests || []);
   buildCategoryChecks(data.homeServiceCategories || []);
+}
+
+/* Show which enrichment sources are connected so a new key is visibly "on"
+ * after a restart (instead of guessing). */
+function renderSources(s) {
+  const el = $('#srSources');
+  if (!el || !s) return;
+  const chip = (ok, label, tipOn, tipOff) =>
+    `<span class="sr-src ${ok ? 'sr-src--on' : ''}" title="${esc(ok ? tipOn : tipOff)}">${ok ? '●' : '○'} ${esc(label)}</span>`;
+  el.innerHTML =
+    'Sources: ' +
+    chip(s.places, 'Google Places', 'Live business search is on.', 'No GOOGLE_PLACES_API_KEY — runs use demo data.') +
+    chip(s.webSearch, 'Web search (Gemini/Claude)', 'Owner/email/website web lookups are on.', 'Add GEMINI_API_KEY or ANTHROPIC_API_KEY to enable web lookups.') +
+    chip(s.googleCse, 'Google Custom Search', 'Custom Search JSON API is connected (100 free queries/day).', 'Add GOOGLE_CSE_API_KEY + GOOGLE_CSE_CX to enable.') +
+    chip(s.crunchbase, 'Crunchbase', 'Revenue-range enrichment is on.', 'Add CRUNCHBASE_API_KEY to enable (paid plan).') +
+    chip(s.edgar, 'SEC EDGAR', 'Public-company revenue lookups are on.', 'Set EDGAR_ENABLED=true for public-company runs (not useful for local trades).');
 }
 
 function renderCards(requests) {
