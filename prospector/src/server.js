@@ -16,6 +16,7 @@ import { googleSearchReady } from './enrich/googleSearch.js';
 import { crunchbaseReady } from './enrich/crunchbase.js';
 import { apolloReady } from './enrich/apollo.js';
 import { verifyPhones, twilioReady, needsLineType } from './enrich/phoneFinder.js';
+import { twilioUsage } from './enrich/twilioUsage.js';
 import { log } from './logger.js';
 
 /* Constant-time string compare to avoid leaking the password via timing. */
@@ -218,7 +219,11 @@ export function startServer() {
   const PHONE_BATCH_MAX = 250; // hard cap per call so one click can't drain a balance
   app.get('/api/verify-phones/pending', (_req, res) => {
     const pending = store.all().filter(needsLineType).length;
-    res.json({ pending, ready: twilioReady(), costPer: TWILIO_COST_PER, batchMax: PHONE_BATCH_MAX });
+    const u = twilioUsage(); // today's hard daily budget
+    res.json({
+      pending, ready: twilioReady(), costPer: TWILIO_COST_PER, batchMax: PHONE_BATCH_MAX,
+      dailyUsed: u.used, dailyCap: u.cap, dailyRemaining: u.remaining,
+    });
   });
 
   // Line-type phone numbers via Twilio so cold SMS skips landlines/VoIP.

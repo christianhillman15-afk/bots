@@ -1,4 +1,5 @@
 import { config } from '../config.js';
+import { reserveLookup } from './twilioUsage.js';
 
 /*
  * Twilio Lookup — line-type intelligence (key-gated).
@@ -37,6 +38,10 @@ export async function lookupPhone(phone) {
   if (!twilioReady()) return null;
   const e164 = toE164(phone);
   if (!e164) return { valid: false, lineType: 'unknown', carrier: '', mobile: false };
+  // HARD SPEND GUARD: reserve a slot under today's cap BEFORE any billable call.
+  // If the daily cap is reached, refuse — no Twilio request, no charge. Nothing
+  // can bypass this because every lookup goes through here.
+  if (!reserveLookup()) return { capped: true };
   try {
     const auth = Buffer.from(`${config.twilioAccountSid}:${config.twilioAuthToken}`).toString('base64');
     const res = await fetch(`${BASE}${encodeURIComponent(e164)}?Fields=line_type_intelligence`, {

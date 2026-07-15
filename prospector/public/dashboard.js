@@ -213,12 +213,20 @@ async function verifyPhonesBtn() {
   if (!info) { alert('Could not reach the server.'); return; }
   if (!info.ready) { alert('Add Twilio keys (TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN) to .env and restart first.'); return; }
   if (!info.pending) { alert('All phone numbers are already line-typed — nothing to check (and nothing to bill).'); return; }
-  const batch = Math.min(info.pending, info.batchMax || 250);
+  const dailyLeft = info.dailyRemaining ?? info.batchMax ?? 250;
+  if (dailyLeft <= 0) {
+    alert(`Daily Twilio safety cap reached (${info.dailyCap}/day). No more lookups today — resets tomorrow. Raise TWILIO_DAILY_LOOKUP_CAP in .env only if you deliberately need more.`);
+    return;
+  }
+  // Batch is the SMALLEST of: what's pending, the per-click cap, and today's
+  // remaining daily budget — so a click can never exceed any limit.
+  const batch = Math.min(info.pending, info.batchMax || 250, dailyLeft);
   const cost = (batch * (info.costPer || 0.008)).toFixed(2);
   const ok = confirm(
     `Line-type ${batch} phone number${batch === 1 ? '' : 's'} now?\n\n` +
     `• Twilio bills ~$${(info.costPer || 0.008).toFixed(3)} each → about $${cost} for this batch.\n` +
-    `• ${info.pending} numbers still need checking; this does up to ${info.batchMax || 250} per click so cost stays controlled.\n\n` +
+    `• Daily safety cap: ${info.dailyUsed}/${info.dailyCap} used, ${dailyLeft} left today (~$${(dailyLeft * (info.costPer || 0.008)).toFixed(2)} max).\n` +
+    `• ${info.pending} numbers still need checking overall.\n\n` +
     `Tip: you only need to line-type numbers you're about to TEXT, not your whole list.`
   );
   if (!ok) return;

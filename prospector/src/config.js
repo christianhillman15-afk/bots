@@ -78,6 +78,12 @@ export const config = {
   // textable mobiles. Protects sender reputation. Basic Auth = SID + token.
   twilioAccountSid: process.env.TWILIO_ACCOUNT_SID?.trim() || '',
   twilioAuthToken: process.env.TWILIO_AUTH_TOKEN?.trim() || '',
+  // HARD daily ceiling on Twilio lookups so a bug/loop/repeat-click can never
+  // run up a bill again. At ~$0.008 each, the default 1,000/day caps spend at
+  // ~$8/day no matter what. Persisted across restarts. Raise it deliberately if
+  // you ever need a bigger one-time batch. 0 is treated as this default, never
+  // "unlimited" — over-spend protection can't be turned off by accident.
+  twilioDailyLookupCap: Number(process.env.TWILIO_DAILY_LOOKUP_CAP) || 1000,
   // Apollo.io — B2B people data: owner/decision-maker name, title, email, phone.
   apolloApiKey: process.env.APOLLO_API_KEY?.trim() || '',
 };
