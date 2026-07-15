@@ -15,7 +15,7 @@ import { SpecialRequestStore, runSpecialRequest, HOME_SERVICE_CATEGORIES } from 
 import { googleSearchReady } from './enrich/googleSearch.js';
 import { crunchbaseReady } from './enrich/crunchbase.js';
 import { apolloReady } from './enrich/apollo.js';
-import { verifyPhones, twilioReady } from './enrich/phoneFinder.js';
+import { verifyPhones, twilioReady, needsLineType } from './enrich/phoneFinder.js';
 import { log } from './logger.js';
 
 /* Constant-time string compare to avoid leaking the password via timing. */
@@ -212,14 +212,26 @@ export function startServer() {
     }
   });
 
+  // How many numbers still need line-typing — powers the cost preview so a run
+  // can never surprise-bill. Twilio charges ~$0.008 per line-type lookup.
+  const TWILIO_COST_PER = 0.008;
+  const PHONE_BATCH_MAX = 250; // hard cap per call so one click can't drain a balance
+  app.get('/api/verify-phones/pending', (_req, res) => {
+    const pending = store.all().filter(needsLineType).length;
+    res.json({ pending, ready: twilioReady(), costPer: TWILIO_COST_PER, batchMax: PHONE_BATCH_MAX });
+  });
+
   // Line-type phone numbers via Twilio so cold SMS skips landlines/VoIP.
-  app.post('/api/verify-phones', async (_req, res) => {
+  // HARD-CAPPED per call so a single click can never run away with cost.
+  app.post('/api/verify-phones', async (req, res) => {
     if (!twilioReady()) return res.status(400).json({ error: 'Add TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN to .env and restart to line-type phones.' });
     if (scanning) return res.status(409).json({ error: 'Busy — a scan is running.' });
+    const limit = Math.min(Math.max(1, Number(req.query?.limit) || PHONE_BATCH_MAX), PHONE_BATCH_MAX);
     scanning = true;
     try {
-      const result = await verifyPhones({ store, limit: Number(_req.query?.limit) || 0 });
-      res.json({ ok: true, ...result });
+      const result = await verifyPhones({ store, limit });
+      const remaining = store.all().filter(needsLineType).length;
+      res.json({ ok: true, ...result, remaining, spentUsd: +(result.processed * TWILIO_COST_PER).toFixed(2) });
     } catch (err) {
       res.status(500).json({ error: err.message });
     } finally {

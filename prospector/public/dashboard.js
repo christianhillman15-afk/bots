@@ -207,17 +207,31 @@ async function findEmails() {
 
 async function verifyPhonesBtn() {
   const btn = $('#phoneBtn');
-  if (!confirm('Line-type your phone numbers with Twilio (mobile vs landline)? Landlines/VoIP are then skipped in Daily Phones so cold SMS only hits textable mobiles. Each number is looked up once (~$0.008). Needs Twilio keys in .env.')) return;
+  // Cost preview FIRST — never run without showing exactly how many + $ it bills.
+  let info;
+  try { info = await fetch('/api/verify-phones/pending').then((r) => r.json()); } catch { info = null; }
+  if (!info) { alert('Could not reach the server.'); return; }
+  if (!info.ready) { alert('Add Twilio keys (TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN) to .env and restart first.'); return; }
+  if (!info.pending) { alert('All phone numbers are already line-typed — nothing to check (and nothing to bill).'); return; }
+  const batch = Math.min(info.pending, info.batchMax || 250);
+  const cost = (batch * (info.costPer || 0.008)).toFixed(2);
+  const ok = confirm(
+    `Line-type ${batch} phone number${batch === 1 ? '' : 's'} now?\n\n` +
+    `• Twilio bills ~$${(info.costPer || 0.008).toFixed(3)} each → about $${cost} for this batch.\n` +
+    `• ${info.pending} numbers still need checking; this does up to ${info.batchMax || 250} per click so cost stays controlled.\n\n` +
+    `Tip: you only need to line-type numbers you're about to TEXT, not your whole list.`
+  );
+  if (!ok) return;
   const original = btn.textContent;
   btn.disabled = true; btn.textContent = '📱 Checking…';
   try {
-    const r = await fetch('/api/verify-phones', { method: 'POST' });
+    const r = await fetch('/api/verify-phones?limit=' + batch, { method: 'POST' });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Failed');
-    btn.textContent = `✓ ${d.mobile} mobile / ${d.landline} landline`;
-    if (d.remaining > 0) btn.title = `${d.remaining} numbers left — click again to continue`;
+    btn.textContent = `✓ ${d.mobile} mobile / ${d.landline} landline ($${d.spentUsd})`;
+    if (d.remaining > 0) btn.title = `${d.remaining} numbers left — click again for the next ${info.batchMax || 250}`;
     await refresh();
-    setTimeout(() => (btn.textContent = original), 3500);
+    setTimeout(() => (btn.textContent = original), 4500);
   } catch (e) {
     btn.textContent = '✗ ' + (e.message || 'Failed'); setTimeout(() => (btn.textContent = original), 3500);
   } finally {
