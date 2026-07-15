@@ -86,6 +86,11 @@ export const config = {
   twilioDailyLookupCap: Number(process.env.TWILIO_DAILY_LOOKUP_CAP) || 1000,
   // Apollo.io — B2B people data: owner/decision-maker name, title, email, phone.
   apolloApiKey: process.env.APOLLO_API_KEY?.trim() || '',
+  // Supabase — durable cloud Postgres for leads (survives any droplet death,
+  // no more OOM). The SERVICE key is a secret (full DB access) — .env / GitHub
+  // Secrets only, NEVER committed (the repo is public).
+  supabaseUrl: process.env.SUPABASE_URL?.trim() || '',
+  supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || '',
 };
 
 /** True when we have a real Places key; otherwise we run on demo data. */

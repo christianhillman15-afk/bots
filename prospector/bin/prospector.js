@@ -11,6 +11,8 @@ import { enrichEmails } from '../src/enrich/emailFinder.js';
 import { verifyMissingWebsites, enrichOwners, searchReady, findWebsite, guessWebsite } from '../src/enrich/websiteFinder.js';
 import { log, color } from '../src/logger.js';
 import { usd } from '../src/util.js';
+import { syncLeads, countLeads, supabaseReady, syncSpecialRequests } from '../src/supabase.js';
+import { SpecialRequestStore } from '../src/specialRequests.js';
 
 // ── tiny arg parser ───────────────────────────────────────────────────────
 function parseArgs(argv) {
@@ -298,6 +300,38 @@ function cmdRescore() {
   log.ok(`Re-scored ${n} of ${all.length} leads — every one now has the latest openers + full call script.`);
 }
 
+// Push EVERY lead to Supabase (idempotent upsert), then VERIFY the count in
+// Supabase matches the local count so we're certain nothing was missed.
+async function cmdSyncSupabase() {
+  if (!supabaseReady()) {
+    log.err('Set SUPABASE_URL and SUPABASE_SERVICE_KEY in .env first, then re-run.');
+    process.exit(1);
+  }
+  const store = new LeadStore();
+  const local = store.size;
+  log.info(`Syncing ${local} leads to Supabase…`);
+  const { sent } = await syncLeads({
+    store,
+    onProgress: ({ sent, total }) => process.stdout.write(`\r  pushed ${sent}/${total}   `),
+  });
+  process.stdout.write('\n');
+  // Special-request profiles too (best effort).
+  try {
+    const srStore = new SpecialRequestStore();
+    const sr = await syncSpecialRequests({ srStore });
+    if (sr.sent) log.ok(`Synced ${sr.sent} special-request profile(s).`);
+  } catch { /* non-fatal */ }
+  // VERIFY — the whole point: does Supabase now hold every lead?
+  const remote = await countLeads();
+  log.ok(`Pushed ${sent} leads. Supabase now holds ${remote} lead rows.`);
+  if (remote >= local) {
+    log.ok(`✓ VERIFIED — Supabase has all ${local} of your leads (or more). Nothing was missed.`);
+  } else {
+    log.warn(`⚠ Supabase has ${remote} but you have ${local} locally. Re-run "npm run sync-supabase" — it's safe to repeat and will fill any gaps.`);
+    process.exit(2);
+  }
+}
+
 // ── pretty printers ───────────────────────────────────────────────────────
 function printPresence(byPresence) {
   const labels = {
@@ -395,6 +429,7 @@ const run = {
   'find-emails': () => cmdFindEmails(opts),
   'verify-websites': () => cmdVerifyWebsites(opts),
   'find-owners': () => cmdFindOwners(opts),
+  'sync-supabase': () => cmdSyncSupabase(opts),
   check: () => cmdCheck(opts),
 };
 (async () => {
