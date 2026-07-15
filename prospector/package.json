@@ -16,7 +16,8 @@
     "stats": "node bin/prospector.js stats",
     "serve": "node bin/prospector.js serve",
     "start": "node bin/prospector.js serve",
-    "sync-supabase": "node bin/prospector.js sync-supabase"
+    "sync-supabase": "node bin/prospector.js sync-supabase",
+    "hunt-cloud": "node bin/hunt-cloud.js"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

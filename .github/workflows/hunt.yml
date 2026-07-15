@@ -1,0 +1,38 @@
+name: Cloud Hunt
+
+# Runs the lead scanner on a schedule — free, no server. Each run scans the next
+# metro × category chunk and writes leads to Supabase (see prospector/bin/hunt-cloud.js).
+on:
+  schedule:
+    - cron: '17 * * * *'   # hourly, at :17 past the hour (UTC; GitHub may delay under load)
+  workflow_dispatch: {}      # lets you run it on demand from the Actions tab
+
+# Never let two hunts overlap (they share one cursor in Supabase).
+concurrency:
+  group: cloud-hunt
+  cancel-in-progress: false
+
+jobs:
+  hunt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: prospector
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --omit=dev
+      - name: Run one hunt tick
+        run: node bin/hunt-cloud.js
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+          AUDIT_MODE: light
+          AUTO_ENRICH: 'true'
+          # GEMINI_API_KEY intentionally omitted: keeps the scheduled hunt on the
+          # free email path with no runaway search cost. Add it as a secret only
+          # if you accept that the daily search cap isn't persisted across runs.
