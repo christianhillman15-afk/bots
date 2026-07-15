@@ -54,7 +54,10 @@ async function upsertBatch(rows) {
   const res = await fetch(rest('leads?on_conflict=id'), {
     method: 'POST',
     headers: headers({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
-    body: JSON.stringify(rows),
+    // Encode as a UTF-8 Buffer, not a string: lead scripts contain non-Latin1
+    // characters (•, ·, em-dashes) and older Node's fetch throws a ByteString
+    // error on string bodies with those. A Buffer sends the bytes directly.
+    body: Buffer.from(JSON.stringify(rows), 'utf8'),
   });
   if (!res.ok) {
     const t = await res.text().catch(() => '');
@@ -108,7 +111,7 @@ export async function syncSpecialRequests({ srStore }) {
   const res = await fetch(rest('special_requests?on_conflict=id'), {
     method: 'POST',
     headers: headers({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
-    body: JSON.stringify(rows),
+    body: Buffer.from(JSON.stringify(rows), 'utf8'),
   });
   if (!res.ok) { log.warn(`special_requests sync ${res.status}`); return { sent: 0 }; }
   return { sent: rows.length };
