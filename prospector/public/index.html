@@ -32,6 +32,7 @@
         <button id="exportBtn" class="btn btn--ghost" title="Download all filtered leads as a spreadsheet">⬇ Export CSV</button>
         <span class="toolbar__sep"></span>
         <button id="backupBtn" class="btn btn--ghost" title="Download a full backup of ALL your leads to your computer — do this regularly so a server problem can never wipe them">💾 Backup</button>
+        <button id="supabaseBtn" class="btn btn--ghost" title="Push every lead to your Supabase cloud database (durable — survives any server problem). Needs Supabase keys in .env.">☁️ Sync to Supabase</button>
         <button id="restoreBtn" class="btn btn--ghost" title="Restore your leads from a backup file (adds any you're missing; never deletes)">⤒ Restore</button>
         <input type="file" id="restoreFile" accept="application/json,.json" hidden />
       </div>

@@ -17,6 +17,7 @@ import { crunchbaseReady } from './enrich/crunchbase.js';
 import { apolloReady } from './enrich/apollo.js';
 import { verifyPhones, twilioReady, needsLineType } from './enrich/phoneFinder.js';
 import { twilioUsage } from './enrich/twilioUsage.js';
+import { syncLeads, syncSpecialRequests, countLeads, supabaseReady } from './supabase.js';
 import { log } from './logger.js';
 
 /* Constant-time string compare to avoid leaking the password via timing. */
@@ -349,6 +350,24 @@ export function startServer() {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="launchmedia-leads-backup-${stamp}.json"`);
     res.send(JSON.stringify(store.serialize()));
+  });
+
+  // One-click push of every lead to Supabase (durable cloud copy). Idempotent —
+  // safe to click anytime; it upserts by id and verifies the row count.
+  app.post('/api/sync-supabase', async (_req, res) => {
+    if (!supabaseReady()) return res.status(400).json({ error: 'Add SUPABASE_URL + SUPABASE_SERVICE_KEY to .env and restart first.' });
+    if (scanning) return res.status(409).json({ error: 'Busy — a scan is running.' });
+    scanning = true;
+    try {
+      const { sent, total } = await syncLeads({ store });
+      try { await syncSpecialRequests({ srStore }); } catch { /* non-fatal */ }
+      const remote = await countLeads();
+      res.json({ ok: true, sent, total, remote, verified: remote >= total });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    } finally {
+      scanning = false;
+    }
   });
 
   // Restore leads from an uploaded backup. Default 'merge' only ADDS leads you

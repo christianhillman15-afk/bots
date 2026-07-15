@@ -47,6 +47,7 @@ async function boot() {
   $('#verifyBtn').addEventListener('click', verifyWebsites);
   $('#ownersBtn').addEventListener('click', findOwners);
   $('#backupBtn').addEventListener('click', () => { window.location = '/api/backup.json'; });
+  $('#supabaseBtn').addEventListener('click', syncSupabase);
   $('#restoreBtn').addEventListener('click', () => $('#restoreFile').click());
   $('#restoreFile').addEventListener('change', handleRestore);
   $('#dailyEmailBtn').addEventListener('click', () => {
@@ -242,6 +243,24 @@ async function verifyPhonesBtn() {
     setTimeout(() => (btn.textContent = original), 4500);
   } catch (e) {
     btn.textContent = '✗ ' + (e.message || 'Failed'); setTimeout(() => (btn.textContent = original), 3500);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function syncSupabase() {
+  const btn = $('#supabaseBtn');
+  if (!confirm('Push every lead to your Supabase cloud database? This is safe to run anytime — it updates existing rows and adds new ones. Your leads then survive any server problem.')) return;
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = '☁️ Syncing…';
+  try {
+    const r = await fetch('/api/sync-supabase', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed');
+    btn.textContent = d.verified ? `✓ ${d.remote} leads in Supabase` : `⚠ sent ${d.sent}, Supabase has ${d.remote}`;
+    setTimeout(() => (btn.textContent = original), 5000);
+  } catch (e) {
+    btn.textContent = '✗ ' + (e.message || 'Failed'); setTimeout(() => (btn.textContent = original), 4000);
   } finally {
     btn.disabled = false;
   }
