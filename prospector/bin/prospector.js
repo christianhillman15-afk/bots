@@ -310,11 +310,12 @@ async function cmdSyncSupabase() {
   const store = new LeadStore();
   const local = store.size;
   log.info(`Syncing ${local} leads to Supabase…`);
-  const { sent } = await syncLeads({
+  const { sent, skipped } = await syncLeads({
     store,
-    onProgress: ({ sent, total }) => process.stdout.write(`\r  pushed ${sent}/${total}   `),
+    onProgress: ({ done, total }) => process.stdout.write(`\r  processed ${done}/${total}   `),
   });
   process.stdout.write('\n');
+  if (skipped) log.warn(`${skipped} lead(s) skipped (corrupt characters in their data) — see the ⚠ lines above. The rest synced fine.`);
   // Special-request profiles too (best effort).
   try {
     const srStore = new SpecialRequestStore();
@@ -324,10 +325,11 @@ async function cmdSyncSupabase() {
   // VERIFY — the whole point: does Supabase now hold every lead?
   const remote = await countLeads();
   log.ok(`Pushed ${sent} leads. Supabase now holds ${remote} lead rows.`);
-  if (remote >= local) {
-    log.ok(`✓ VERIFIED — Supabase has all ${local} of your leads (or more). Nothing was missed.`);
+  const expected = local - skipped; // corrupt rows we deliberately skipped don't count
+  if (remote >= expected) {
+    log.ok(`✓ VERIFIED — Supabase has all ${expected} syncable leads${skipped ? ` (${skipped} skipped as corrupt)` : ''}. Nothing was missed.`);
   } else {
-    log.warn(`⚠ Supabase has ${remote} but you have ${local} locally. Re-run "npm run sync-supabase" — it's safe to repeat and will fill any gaps.`);
+    log.warn(`⚠ Supabase has ${remote}, expected ${expected}. Re-run "npm run sync-supabase" — it's safe to repeat and will fill any gaps.`);
     process.exit(2);
   }
 }
