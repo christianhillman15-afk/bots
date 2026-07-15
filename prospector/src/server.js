@@ -14,6 +14,8 @@ import { createScheduler } from './scheduler.js';
 import { SpecialRequestStore, runSpecialRequest, HOME_SERVICE_CATEGORIES } from './specialRequests.js';
 import { googleSearchReady } from './enrich/googleSearch.js';
 import { crunchbaseReady } from './enrich/crunchbase.js';
+import { apolloReady } from './enrich/apollo.js';
+import { verifyPhones, twilioReady } from './enrich/phoneFinder.js';
 import { log } from './logger.js';
 
 /* Constant-time string compare to avoid leaking the password via timing. */
@@ -210,6 +212,21 @@ export function startServer() {
     }
   });
 
+  // Line-type phone numbers via Twilio so cold SMS skips landlines/VoIP.
+  app.post('/api/verify-phones', async (_req, res) => {
+    if (!twilioReady()) return res.status(400).json({ error: 'Add TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN to .env and restart to line-type phones.' });
+    if (scanning) return res.status(409).json({ error: 'Busy — a scan is running.' });
+    scanning = true;
+    try {
+      const result = await verifyPhones({ store, limit: Number(_req.query?.limit) || 0 });
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    } finally {
+      scanning = false;
+    }
+  });
+
   // Filtered leads + facet counts
   app.get('/api/leads', (req, res) => {
     const q = req.query;
@@ -239,8 +256,10 @@ export function startServer() {
         places: isLive(),
         webSearch: searchReady(), // Gemini/Claude grounding
         googleCse: googleSearchReady(),
+        apollo: apolloReady(),
         crunchbase: crunchbaseReady(),
         edgar: config.edgarEnabled,
+        twilio: twilioReady(),
       },
     });
   });
@@ -459,10 +478,14 @@ export function startServer() {
     { header: 'call_script', get: (l) => l.score?.script || csvOpener(l, 'call') },
   ];
   const dailyEmailCols = dailyCols;
-  const dailyPhoneCols = dailyCols;
+  // Phones list carries the line type so the sender can see mobile vs landline.
+  const dailyPhoneCols = [...dailyCols, { header: 'line_type', get: (l) => l.business?.lineType || '' }];
   // "Fresh for this channel" = has the contact + we haven't saved it before.
+  // Phones also skip numbers Twilio flagged as landline/VoIP (not textable). This
+  // is a no-op until phones are line-typed, so it never hides numbers by default.
   const emailFresh = (l) => emailable(l) && !l.emailSavedAt;
-  const phoneFresh = (l) => l.business?.phone && !l.phoneSavedAt;
+  const textable = (l) => l.business?.lineType !== 'landline' && l.business?.lineType !== 'voip';
+  const phoneFresh = (l) => l.business?.phone && !l.phoneSavedAt && textable(l);
 
   function sendDaily(res, ready, mark, cols, label) {
     const now = new Date().toISOString();

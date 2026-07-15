@@ -44,8 +44,10 @@ function renderSources(s) {
     chip(s.places, 'Google Places', 'Live business search is on.', 'No GOOGLE_PLACES_API_KEY — runs use demo data.') +
     chip(s.webSearch, 'Web search (Gemini/Claude)', 'Owner/email/website web lookups are on.', 'Add GEMINI_API_KEY or ANTHROPIC_API_KEY to enable web lookups.') +
     chip(s.googleCse, 'Google Custom Search', 'Custom Search JSON API is connected (100 free queries/day).', 'Add GOOGLE_CSE_API_KEY + GOOGLE_CSE_CX to enable.') +
+    chip(s.apollo, 'Apollo.io', 'Owner/decision-maker names + direct contacts are on.', 'Add APOLLO_API_KEY to enable owner + direct-contact lookups.') +
     chip(s.crunchbase, 'Crunchbase', 'Revenue-range enrichment is on.', 'Add CRUNCHBASE_API_KEY to enable (paid plan).') +
-    chip(s.edgar, 'SEC EDGAR', 'Public-company revenue lookups are on.', 'Set EDGAR_ENABLED=true for public-company runs (not useful for local trades).');
+    chip(s.edgar, 'SEC EDGAR', 'Public-company revenue lookups are on.', 'Set EDGAR_ENABLED=true for public-company runs (not useful for local trades).') +
+    chip(s.twilio, 'Twilio (phone line-type)', 'Mobile-vs-landline detection is on — Daily Phones skips landlines.', 'Add TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN to filter landlines from SMS.');
 }
 
 function renderCards(requests) {

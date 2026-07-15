@@ -74,6 +74,12 @@ export const config = {
   // Off by default since local trades are private; flip on for big-company runs.
   edgarEnabled: /^(1|true|yes|on)$/i.test(process.env.EDGAR_ENABLED || ''),
   edgarUserAgent: process.env.EDGAR_USER_AGENT?.trim() || 'Launch Media Prospector christian@wearelaunchmedia.com',
+  // Twilio Lookup — line-type (mobile / landline / voip) so SMS only goes to
+  // textable mobiles. Protects sender reputation. Basic Auth = SID + token.
+  twilioAccountSid: process.env.TWILIO_ACCOUNT_SID?.trim() || '',
+  twilioAuthToken: process.env.TWILIO_AUTH_TOKEN?.trim() || '',
+  // Apollo.io — B2B people data: owner/decision-maker name, title, email, phone.
+  apolloApiKey: process.env.APOLLO_API_KEY?.trim() || '',
 };
 
 /** True when we have a real Places key; otherwise we run on demo data. */

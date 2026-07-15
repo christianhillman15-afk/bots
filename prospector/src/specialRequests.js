@@ -13,6 +13,7 @@ import { log } from './logger.js';
 import { enrichCrunchbase } from './enrich/crunchbase.js';
 import { enrichEdgar } from './enrich/edgar.js';
 import { findWebsiteGoogle, findOwnerGoogle, findEmailGoogle } from './enrich/googleSearch.js';
+import { enrichApollo } from './enrich/apollo.js';
 
 /*
  * Special Requests — bespoke, criteria-driven lead pulls that live in their own
@@ -172,6 +173,20 @@ function toRow(b) {
  *   revenue: Crunchbase range + SEC EDGAR (public) annotations
  */
 async function enrichBusiness(b) {
+  // Apollo first — the strongest source for owner/decision-maker + direct
+  // contact. Needs a domain, so guess the website first if Places has none.
+  if (!b.website) {
+    try { const g = await guessWebsite(b); if (g?.website) b.website = g.website; } catch { /* best effort */ }
+  }
+  try {
+    const a = await enrichApollo(b);
+    if (a) {
+      if (a.owner) { b.ownerName = a.owner; b.ownerTitle = a.title; }
+      if (a.email && !b.email) { b.email = a.email; b.emailSource = 'apollo'; }
+      if (a.phone && !b.directPhone) b.directPhone = a.phone;
+      b.apollo = { title: a.title, linkedin: a.linkedin };
+    }
+  } catch { /* best effort */ }
   // Website: guess one if Google Places has none.
   if (!b.website) {
     try {

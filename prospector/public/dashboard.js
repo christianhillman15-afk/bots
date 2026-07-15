@@ -43,6 +43,7 @@ async function boot() {
   $('#instantlyBtn').addEventListener('click', () => { window.location = '/api/export-instantly.csv?' + qs(); });
   $('#rescoreBtn').addEventListener('click', rescoreAll);
   $('#emailBtn').addEventListener('click', findEmails);
+  $('#phoneBtn').addEventListener('click', verifyPhonesBtn);
   $('#verifyBtn').addEventListener('click', verifyWebsites);
   $('#ownersBtn').addEventListener('click', findOwners);
   $('#backupBtn').addEventListener('click', () => { window.location = '/api/backup.json'; });
@@ -199,6 +200,26 @@ async function findEmails() {
     setTimeout(() => (btn.textContent = original), 2500);
   } catch (e) {
     btn.textContent = '✗ ' + (e.message || 'Failed'); setTimeout(() => (btn.textContent = original), 2500);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function verifyPhonesBtn() {
+  const btn = $('#phoneBtn');
+  if (!confirm('Line-type your phone numbers with Twilio (mobile vs landline)? Landlines/VoIP are then skipped in Daily Phones so cold SMS only hits textable mobiles. Each number is looked up once (~$0.008). Needs Twilio keys in .env.')) return;
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = '📱 Checking…';
+  try {
+    const r = await fetch('/api/verify-phones', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed');
+    btn.textContent = `✓ ${d.mobile} mobile / ${d.landline} landline`;
+    if (d.remaining > 0) btn.title = `${d.remaining} numbers left — click again to continue`;
+    await refresh();
+    setTimeout(() => (btn.textContent = original), 3500);
+  } catch (e) {
+    btn.textContent = '✗ ' + (e.message || 'Failed'); setTimeout(() => (btn.textContent = original), 3500);
   } finally {
     btn.disabled = false;
   }
