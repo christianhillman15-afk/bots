@@ -49,8 +49,12 @@ function leadRow(l) {
   };
 }
 
-/** Upsert a batch of leads (conflict on id → update). Returns count sent. */
+/** Upsert a batch of leads (conflict on id → update). Returns count sent.
+ * If the batch is too large for Supabase's request limit (400 "invalid json"),
+ * it splits in half and retries — so it auto-adapts to however big the leads
+ * are and no single oversized batch can stall the whole sync. */
 async function upsertBatch(rows) {
+  if (!rows.length) return 0;
   const res = await fetch(rest('leads?on_conflict=id'), {
     method: 'POST',
     headers: headers({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
@@ -59,18 +63,21 @@ async function upsertBatch(rows) {
     // error on string bodies with those. A Buffer sends the bytes directly.
     body: Buffer.from(JSON.stringify(rows), 'utf8'),
   });
-  if (!res.ok) {
-    const t = await res.text().catch(() => '');
-    throw new Error(`Supabase upsert ${res.status}: ${t.slice(0, 300)}`);
+  if (res.ok) return rows.length;
+  const t = await res.text().catch(() => '');
+  // Oversized body (or a request limit) → split and retry the halves.
+  if ((res.status === 400 || res.status === 413) && rows.length > 1) {
+    const mid = Math.ceil(rows.length / 2);
+    return (await upsertBatch(rows.slice(0, mid))) + (await upsertBatch(rows.slice(mid)));
   }
-  return rows.length;
+  throw new Error(`Supabase upsert ${res.status}: ${t.slice(0, 300)}`);
 }
 
 /**
  * Push EVERY lead in the store to Supabase, in batches, idempotently (upsert by
  * id — safe to re-run). Returns { sent, total }. onProgress({sent,total}).
  */
-export async function syncLeads({ store, batchSize = 500, onProgress = () => {} }) {
+export async function syncLeads({ store, batchSize = 200, onProgress = () => {} }) {
   if (!supabaseReady()) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set.');
   const leads = store.all();
   let sent = 0;
