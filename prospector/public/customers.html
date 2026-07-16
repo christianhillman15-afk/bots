@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Launch Media Prospector — Customers</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand__mark">⚡</span>
+      <span class="brand__text">Launch <span class="accent">Media</span></span>
+      <span class="brand__sub">Customers</span>
+    </div>
+    <div class="topbar__right">
+      <span id="payBadge" class="badge badge--demo">Stripe not connected</span>
+    </div>
+  </header>
+
+  <nav class="pagetabs">
+    <a class="pagetab" href="/">Prospector</a>
+    <a class="pagetab" href="/bigguys.html">Big Guys</a>
+    <a class="pagetab" href="/special.html">Special Requests</a>
+    <a class="pagetab pagetab--active" href="/customers.html">Customers</a>
+  </nav>
+
+  <main class="wrap">
+    <section class="stats" id="custStats"></section>
+    <section class="leads" id="custList"></section>
+  </main>
+
+  <script src="customers.js"></script>
+</body>
+</html>

@@ -117,6 +117,14 @@ export const config = {
   // add 'google-places' here (and set a key) to include it as a gap-filler.
   discoverySources: (process.env.DISCOVERY_SOURCES || 'overpass,socrata,arcgis')
     .split(',').map((s) => s.trim()).filter(Boolean),
+
+  // Stripe — the ONLY place a customer's card is ever handled. When these are
+  // set, the "Create Customer" flow can generate a secure Stripe payment/
+  // subscription link. The card is entered on Stripe's page and never touches
+  // this app. Leave blank until you have the keys from your Stripe dashboard.
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY?.trim() || '',
+  stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY?.trim() || '',
+  stripePriceId: process.env.STRIPE_PRICE_ID?.trim() || '', // recurring plan price id
 };
 
 /** True when we have a real Places key; otherwise we run on demo data. */

@@ -15,6 +15,7 @@ import { enrichEmails, verifyEmails } from './enrich/emailFinder.js';
 import { verifyMissingWebsites, enrichOwners, searchReady, searchUsage, recheckLead } from './enrich/websiteFinder.js';
 import { createScheduler } from './scheduler.js';
 import { SpecialRequestStore, runSpecialRequest, HOME_SERVICE_CATEGORIES } from './specialRequests.js';
+import { CustomerStore } from './customers.js';
 import { googleSearchReady } from './enrich/googleSearch.js';
 import { crunchbaseReady } from './enrich/crunchbase.js';
 import { apolloReady } from './enrich/apollo.js';
@@ -94,6 +95,7 @@ export function startServer() {
   const scheduler = createScheduler({ store, isBusy, setBusy });
   const srStore = new SpecialRequestStore();
   const srRunning = new Set(); // request ids currently running
+  const custStore = new CustomerStore();
 
   // Health check for hosting platforms — must stay public (before auth).
   app.get('/healthz', (_req, res) => res.json({ ok: true, leads: store.size, live: isLive() }));
@@ -214,6 +216,60 @@ export function startServer() {
       const out = await setHuntControl({ enabled, stopAfter: stopAfter || null });
       res.json({ ok: true, ...out });
     } catch (err) { res.status(502).json({ error: err.message }); }
+  });
+
+  // ── Customers (a lead who said "yes") ──────────────────────────────────────
+  // Contact + deal info only. Payment is collected through Stripe — this store
+  // never holds a card number (see customers.js). stripeReady tells the UI
+  // whether the "Send payment link" action can work yet.
+  app.get('/api/customers', (_req, res) => {
+    res.json({ customers: custStore.all(), stripeReady: Boolean(config.stripeSecretKey) });
+  });
+  app.post('/api/customers', (req, res) => {
+    try {
+      const c = custStore.create(req.body || {});
+      res.json({ ok: true, customer: c });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+  app.patch('/api/customers/:id', (req, res) => {
+    const c = custStore.update(req.params.id, req.body || {});
+    if (!c) return res.status(404).json({ error: 'Customer not found.' });
+    res.json({ ok: true, customer: c });
+  });
+  app.delete('/api/customers/:id', (req, res) => {
+    const ok = custStore.remove(req.params.id);
+    if (!ok) return res.status(404).json({ error: 'Customer not found.' });
+    res.json({ ok: true });
+  });
+  // Create a secure Stripe payment/subscription link for a customer. The card is
+  // entered on Stripe's hosted page — never here. Requires STRIPE_SECRET_KEY +
+  // STRIPE_PRICE_ID; until those exist it returns a clear "set up Stripe" message.
+  app.post('/api/customers/:id/payment-link', async (req, res) => {
+    const c = custStore.get(req.params.id);
+    if (!c) return res.status(404).json({ error: 'Customer not found.' });
+    if (!config.stripeSecretKey || !config.stripePriceId) {
+      return res.status(400).json({ error: 'Stripe isn\'t set up yet. Add STRIPE_SECRET_KEY and STRIPE_PRICE_ID to enable payment links.' });
+    }
+    try {
+      // Stripe Payment Links API — form-encoded, no SDK needed. Creates a
+      // reusable hosted checkout for the recurring plan price.
+      const body = new URLSearchParams();
+      body.set('line_items[0][price]', config.stripePriceId);
+      body.set('line_items[0][quantity]', '1');
+      const r = await fetch('https://api.stripe.com/v1/payment_links', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${config.stripeSecretKey}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+        body,
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error?.message || `Stripe ${r.status}`);
+      custStore.update(c.id, { paymentStatus: 'link_sent', activityNote: `Payment link created: ${d.url}` });
+      res.json({ ok: true, url: d.url });
+    } catch (err) {
+      res.status(502).json({ error: err.message });
+    }
   });
 
   // Re-score every stored lead in place (regenerate openers + full script).

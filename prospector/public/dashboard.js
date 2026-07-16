@@ -50,6 +50,13 @@ async function boot() {
   $('#supabaseBtn').addEventListener('click', syncSupabase);
   $('#restoreBtn').addEventListener('click', () => $('#restoreFile').click());
   $('#restoreFile').addEventListener('change', handleRestore);
+  // Create Customer modal
+  $('#custClose')?.addEventListener('click', closeCustomerModal);
+  $('#custCancel')?.addEventListener('click', closeCustomerModal);
+  $('#custSave')?.addEventListener('click', saveCustomer);
+  $('#custModal')?.addEventListener('click', (e) => { if (e.target === $('#custModal')) closeCustomerModal(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#custModal').hidden) closeCustomerModal(); });
+  fetch('/api/customers').then((r) => r.json()).then((d) => { custStripeReady = Boolean(d.stripeReady); }).catch(() => {});
   $('#dailyEmailBtn').addEventListener('click', () => {
     window.location = '/api/export-daily-emails.csv?limit=1000';
     setTimeout(() => { renderDailyCount(); refresh(); }, 2000); // emails get marked saved
@@ -491,6 +498,63 @@ async function setHunt(enabled) {
   } catch { alert('Could not reach the hunt control. Try again.'); }
 }
 
+// ── Create Customer modal ───────────────────────────────────────────────────
+let custStripeReady = false;
+function openCustomerModal(data) {
+  const setv = (id, v) => { const el = $(id); if (el) el.value = v || ''; };
+  setv('#cBusiness', data.businessName);
+  setv('#cOwner', data.ownerName);
+  setv('#cPhone', data.phone);
+  setv('#cEmail', data.email);
+  setv('#cWebsite', data.website);
+  setv('#cAddress', data.address);
+  setv('#cCity', data.city);
+  setv('#cState', data.state);
+  setv('#cPlan', '');
+  setv('#cPrice', '');
+  setv('#cNotes', '');
+  $('#custModal').dataset.leadId = data.leadId || '';
+  $('#custMsg').textContent = '';
+  renderPayBody();
+  $('#custModal').hidden = false;
+}
+function closeCustomerModal() { $('#custModal').hidden = true; }
+
+function renderPayBody() {
+  const el = $('#custPayBody');
+  if (!el) return;
+  el.innerHTML = custStripeReady
+    ? `Stripe is connected. After you save, you'll get a secure payment link to text or email the customer — they enter their card on Stripe's page, and the sale is done. <b>No card details are entered or stored here.</b>`
+    : `Stripe isn't connected yet (your boss will add the key). For now this saves the customer as <b>payment pending</b>. The moment the Stripe key is in, a <b>Send payment link</b> button appears here and you collect the card securely through Stripe. <b>We never store card numbers.</b>`;
+}
+
+async function saveCustomer() {
+  const val = (id) => ($(id)?.value || '').trim();
+  const business = val('#cBusiness');
+  if (!business) { $('#custMsg').textContent = 'Business name is required.'; return; }
+  const btn = $('#custSave');
+  btn.disabled = true;
+  const payload = {
+    leadId: $('#custModal').dataset.leadId || null,
+    businessName: business,
+    ownerName: val('#cOwner'), phone: val('#cPhone'), email: val('#cEmail'),
+    website: val('#cWebsite'), address: val('#cAddress'), city: val('#cCity'), state: val('#cState'),
+    plan: val('#cPlan'), monthlyPrice: val('#cPrice'), notes: val('#cNotes'),
+  };
+  try {
+    const r = await fetch('/api/customers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed to save');
+    // Also mark the source lead as won, so it leaves the call list.
+    if (payload.leadId) { try { await setStatus(payload.leadId, 'won'); } catch { /* non-fatal */ } }
+    $('#custMsg').textContent = '✓ Saved! Opening Customers…';
+    setTimeout(() => { window.location.href = '/customers.html'; }, 700);
+  } catch (e) {
+    $('#custMsg').textContent = '✗ ' + e.message;
+    btn.disabled = false;
+  }
+}
+
 function renderStats(s) {
   const cards = [
     { num: s.total, label: 'Total leads', cls: '', tip: 'Every business found that has a website problem worth calling.' },
@@ -536,10 +600,17 @@ function renderLeads(leads) {
   }));
   root.querySelectorAll('.actbtn').forEach((b) => b.addEventListener('click', async (e) => {
     if (b.classList.contains('act-recheck')) return; // handled separately below
+    if (b.classList.contains('act-customer')) return; // handled separately below
     e.stopPropagation();
     b.disabled = true;
     await setStatus(b.dataset.id, b.dataset.status);
     refresh();
+  }));
+  root.querySelectorAll('.act-customer').forEach((b) => b.addEventListener('click', (e) => {
+    e.stopPropagation();
+    let data = {};
+    try { data = JSON.parse(b.dataset.cust || '{}'); } catch { /* ignore */ }
+    openCustomerModal(data);
   }));
   root.querySelectorAll('.act-recheck').forEach((b) => b.addEventListener('click', async (e) => {
     e.stopPropagation();
@@ -740,6 +811,7 @@ function leadCard(l) {
       </div>
 
       <div class="detail__actions">
+        <button class="actbtn act-customer" data-cust="${esc(JSON.stringify({ leadId: l.id, businessName: b.name || '', ownerName: b.ownerName || '', phone: b.phone || '', email: b.email || '', website: b.website || '', address: b.address || '', city: b.city || '', state: b.state || '' }))}" title="They said yes on the call — create a customer and set up payment">✅ Create Customer</button>
         ${b.website ? `<a class="linkbtn" href="https://pagespeed.web.dev/report?url=${encodeURIComponent(b.website)}" target="_blank" rel="noopener">Run PageSpeed ↗</a>` : ''}
         ${noSiteClaim ? `<button class="actbtn act-recheck" data-id="${esc(l.id)}" title="Search the web again right now to double-check whether this business has a website">🔍 Re-check website</button>` : ''}
         ${noSiteClaim ? `<button class="actbtn act-hassite" data-id="${esc(l.id)}" data-status="has_site" title="You found out they DO have a website — pull this lead out of your call list">🌐 They have a site — remove</button>` : ''}

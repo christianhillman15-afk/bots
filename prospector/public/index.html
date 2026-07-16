@@ -44,6 +44,7 @@
     <a class="pagetab pagetab--active" href="/">Prospector</a>
     <a class="pagetab" href="/bigguys.html">Big Guys</a>
     <a class="pagetab" href="/special.html">Special Requests</a>
+    <a class="pagetab" href="/customers.html">Customers</a>
   </nav>
 
   <main class="wrap">
@@ -130,6 +131,41 @@
     <!-- Leads -->
     <section class="leads" id="leads"></section>
   </main>
+
+  <!-- Create Customer modal -->
+  <div class="cust-modal" id="custModal" hidden>
+    <div class="cust-modal__box">
+      <div class="cust-modal__head">
+        <h3>✅ Create Customer</h3>
+        <button class="cust-modal__x" id="custClose" title="Close">✕</button>
+      </div>
+      <p class="muted" style="margin:0 0 14px">They said yes — save their info and set up the deal. The card is collected securely through Stripe (never stored here).</p>
+      <div class="cust-form">
+        <label class="cust-field cust-field--wide">Business name<input id="cBusiness" type="text" /></label>
+        <label class="cust-field">Owner / contact<input id="cOwner" type="text" /></label>
+        <label class="cust-field">Phone<input id="cPhone" type="tel" /></label>
+        <label class="cust-field">Email<input id="cEmail" type="email" /></label>
+        <label class="cust-field">Website<input id="cWebsite" type="text" /></label>
+        <label class="cust-field cust-field--wide">Address<input id="cAddress" type="text" /></label>
+        <label class="cust-field">City<input id="cCity" type="text" /></label>
+        <label class="cust-field">State<input id="cState" type="text" /></label>
+        <label class="cust-field">Plan<input id="cPlan" type="text" placeholder="e.g. Website + Marketing" /></label>
+        <label class="cust-field">Monthly price ($)<input id="cPrice" type="number" min="0" step="50" placeholder="750" /></label>
+        <label class="cust-field cust-field--wide">Notes<textarea id="cNotes" rows="2" placeholder="What they agreed to, follow-up, etc."></textarea></label>
+      </div>
+
+      <div class="cust-pay">
+        <div class="cust-pay__title">💳 Payment</div>
+        <div id="custPayBody" class="cust-pay__body"></div>
+      </div>
+
+      <div class="cust-modal__foot">
+        <span id="custMsg" class="cust-msg"></span>
+        <button class="btn btn--ghost" id="custCancel">Cancel</button>
+        <button class="btn btn--red" id="custSave">Save customer</button>
+      </div>
+    </div>
+  </div>
 
   <div class="footnote muted">
     Surfaces publicly available business info for legitimate B2B prospecting. You are responsible for CAN-SPAM / TCPA / state compliance and honoring opt-outs. Not legal advice. See README.
