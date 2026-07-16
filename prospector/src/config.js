@@ -130,6 +130,11 @@ export const config = {
   // built you one"). The token is a secret; keep it in .env only, never in the
   // repo. From Netlify → User settings → Applications → Personal access tokens.
   netlifyToken: process.env.NETLIFY_TOKEN?.trim() || process.env.NETLIFY_AUTH_TOKEN?.trim() || '',
+
+  // Sales reps — the people who can be assigned to a lead ("who called them").
+  // Change the roster with SALES_REPS="Christian,Ethan,Jackson" in .env.
+  reps: (process.env.SALES_REPS || 'Christian,Ethan,Jackson')
+    .split(',').map((s) => s.trim()).filter(Boolean),
 };
 
 /** True when we have a real Places key; otherwise we run on demo data. */

@@ -107,6 +107,10 @@ select:focus, input:focus { border-color: var(--purple); }
 /* Create Customer button + modal */
 .actbtn.act-customer { background: rgba(43,212,125,.14); border-color: rgba(43,212,125,.5); color: #b8f3d4; font-weight: 700; }
 .actbtn.act-customer:hover { background: rgba(43,212,125,.24); }
+.repbadge { font-size: 11px; padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+  background: rgba(139,61,255,.16); border: 1px solid rgba(139,61,255,.5); color: #d7c3ff; font-weight: 700; }
+.repsel-wrap { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
+.repsel-wrap select { padding: 6px 9px; font-size: 13px; }
 .actbtn.act-website { background: rgba(59,130,246,.14); border-color: rgba(59,130,246,.5); color: #bcdcff; font-weight: 700; }
 .actbtn.act-website:hover { background: rgba(59,130,246,.24); }
 

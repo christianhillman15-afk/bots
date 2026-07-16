@@ -18,7 +18,8 @@ const safeUrl = (u) => {
 };
 
 let META = {};
-const state = { tier: '', presence: '', state: '', category: '', sort: 'score', search: '', view: 'all' };
+let REPS = [];
+const state = { tier: '', presence: '', state: '', category: '', rep: '', sort: 'score', search: '', view: 'all' };
 
 /** Update a lead's call status (called / no_answer / new). */
 function setStatus(id, status) {
@@ -36,6 +37,13 @@ async function boot() {
   // populate category filter (value = key, which matches business.category)
   for (const c of META.categories) {
     const o = document.createElement('option'); o.value = c.key; o.textContent = c.label; $('#fCategory').appendChild(o);
+  }
+  // populate rep filter (who's working the lead)
+  REPS = META.reps || [];
+  const fRep = $('#fRep');
+  if (fRep) {
+    for (const r of REPS) { const o = document.createElement('option'); o.value = r; o.textContent = '👤 ' + r; fRep.appendChild(o); }
+    const un = document.createElement('option'); un.value = '__none__'; un.textContent = '— Unassigned'; fRep.appendChild(un);
   }
   wireFilters();
   $('#scanBtn').addEventListener('click', runScan);
@@ -311,7 +319,7 @@ function debounce(fn, ms) {
 }
 
 function wireFilters() {
-  const map = { fSearch: 'search', fTier: 'tier', fPresence: 'presence', fState: 'state', fCategory: 'category', fSort: 'sort' };
+  const map = { fSearch: 'search', fTier: 'tier', fPresence: 'presence', fState: 'state', fCategory: 'category', fRep: 'rep', fSort: 'sort' };
   // Search feels INSTANT: fire right away, then coalesce rapid keystrokes with a
   // tiny 120ms trailing debounce (stale responses are discarded in refresh()).
   const trailing = debounce(refresh, 120);
@@ -340,6 +348,7 @@ function qs() {
   if (state.presence) p.set('presence', state.presence);
   if (state.category) p.set('category', state.category);
   if (state.tier) p.set('tier', state.tier);
+  if (state.rep) p.set('rep', state.rep);
   if (state.search) p.set('search', state.search);
   p.set('sort', state.sort);
   return p.toString();
@@ -602,6 +611,13 @@ function renderLeads(leads) {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: sel.value }),
     });
   }));
+  root.querySelectorAll('.repsel').forEach((sel) => sel.addEventListener('change', async (e) => {
+    e.stopPropagation();
+    await fetch('/api/leads/' + encodeURIComponent(sel.dataset.id), {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rep: sel.value }),
+    });
+    refresh(); // update the row badge
+  }));
   root.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => {
     const detail = t.closest('.lead__detail');
     detail.querySelectorAll('.tab').forEach((x) => x.classList.toggle('active', x === t));
@@ -788,6 +804,7 @@ function leadCard(l) {
         <div class="lead__meta">
           <span class="tag tag--${l.presence}" title="What's wrong with their web presence.">${esc(a.headline)}</span>
           ${verifyBadge}
+          ${l.rep ? `<span class="repbadge" title="Sales rep working this lead">👤 ${esc(l.rep)}</span>` : ''}
           <span>${esc(b.categoryLabel || b.category || '')}</span>
           <span>· ${esc(b.city || '')}, ${esc(b.state || '')}</span>
         </div>
@@ -845,6 +862,12 @@ function leadCard(l) {
         ${noSiteClaim ? `<button class="actbtn act-recheck" data-id="${esc(l.id)}" title="Search the web again right now to double-check whether this business has a website">🔍 Re-check website</button>` : ''}
         ${noSiteClaim ? `<button class="actbtn act-hassite" data-id="${esc(l.id)}" data-status="has_site" title="You found out they DO have a website — pull this lead out of your call list">🌐 They have a site — remove</button>` : ''}
         ${l.compliance?.strictOutreachState ? '<span class="strict">⚠ Strict call/SMS state — email or manual landline only</span>' : ''}
+        <label class="repsel-wrap" title="Which sales rep is working / called this lead">👤
+          <select class="repsel" data-id="${esc(l.id)}">
+            <option value="">Unassigned</option>
+            ${REPS.map((r) => `<option value="${esc(r)}" ${l.rep === r ? 'selected' : ''}>${esc(r)}</option>`).join('')}
+          </select>
+        </label>
         <select class="statussel" data-id="${esc(l.id)}">${statusOpts}</select>
       </div>
     </div>

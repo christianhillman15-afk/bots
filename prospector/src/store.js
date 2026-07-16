@@ -151,6 +151,7 @@ export class LeadStore {
     status,
     presence,
     tier,
+    rep,
     hasPhone,
     hasEmail,
     search,
@@ -174,6 +175,7 @@ export class LeadStore {
     else if (presence === 'none_unconfirmed') rows = rows.filter((l) => (l.presence === 'none' || l.presence === 'social_only') && !l.business?.websiteVerified);
     else if (presence) rows = rows.filter((l) => l.presence === presence);
     if (tier) rows = rows.filter((l) => l.score?.tier === tier);
+    if (rep) rows = rows.filter((l) => (l.rep || '') === (rep === '__none__' ? '' : rep));
     if (hasPhone) rows = rows.filter((l) => l.business?.phone);
     if (hasEmail) rows = rows.filter((l) => l.business?.email && l.business?.emailStatus !== 'risky');
     if (problem) rows = rows.filter((l) => (l.audit?.problems || []).some((p) => p.code === problem));

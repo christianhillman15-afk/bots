@@ -22,6 +22,7 @@ const COLUMNS = [
   { header: 'est_opportunity_mo', get: (l) => l.score?.opportunityUsd },
   { header: 'google_maps', get: (l) => l.business?.googleMapsUri },
   { header: 'status', get: (l) => l.status },
+  { header: 'sales_rep', get: (l) => l.rep || '' },
   { header: 'strict_outreach_state', get: (l) => (l.compliance?.strictOutreachState ? 'yes' : '') },
   { header: 'call_script', get: (l) => opener(l, 'call') },
   { header: 'email_opener', get: (l) => opener(l, 'email') },

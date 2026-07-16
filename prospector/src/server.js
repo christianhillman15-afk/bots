@@ -159,6 +159,7 @@ export function startServer() {
       categories: CATEGORIES.map((c) => ({ key: c.key, label: c.label, tier: c.tier })),
       metros: METROS.map((m) => ({ city: m.city, state: m.state, metroPopulation: m.metroPopulation })),
       states: [...new Set(STATES())].sort(),
+      reps: config.reps,
       autoScan: scheduler.status(),
     });
     function STATES() {
@@ -454,6 +455,7 @@ export function startServer() {
       presence: (useView && viewFilters.presence) || q.presence || undefined,
       status: useView ? viewFilters.status : undefined,
       tier: q.tier || undefined,
+      rep: q.rep || undefined,
       hasPhone: useView ? viewFilters.hasPhone : undefined,
       hasEmail: useView ? viewFilters.hasEmail : undefined,
       problem: q.problem || undefined,
@@ -606,6 +608,8 @@ export function startServer() {
     const patch = {};
     if (typeof req.body.status === 'string') patch.status = req.body.status;
     if (typeof req.body.notes === 'string') patch.notes = req.body.notes;
+    // Which sales rep is working / called this lead.
+    if (typeof req.body.rep === 'string') patch.rep = req.body.rep;
     const updated = store.update(req.params.id, patch);
     if (!updated) return res.status(404).json({ error: 'not found' });
     res.json(updated);
