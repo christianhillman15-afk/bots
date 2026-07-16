@@ -380,18 +380,53 @@ export function startServer() {
   // Filtered leads + facet counts
   app.get('/api/leads', (req, res) => {
     const q = req.query;
-    const leads = store.query({
+    // Translate the dashboard's "view" tabs into concrete filters so paging
+    // happens server-side (was client-side over the whole 10k set — the reason
+    // the page loaded slowly). Only the requested page is serialized + sent.
+    const view = q.view || 'all';
+    const viewFilters = {};
+    if (['new', 'called', 'no_answer', 'callback'].includes(view === 'tocall' ? 'new' : view === 'noanswer' ? 'no_answer' : view)) {
+      viewFilters.status = view === 'tocall' ? 'new' : view === 'noanswer' ? 'no_answer' : view;
+    } else if (view === 'numbers') viewFilters.hasPhone = true;
+    else if (view === 'emails') viewFilters.hasEmail = true;
+    else if (view === 'social') viewFilters.presence = 'social_only';
+
+    const limit = Math.min(Number(q.limit) || 200, 500);
+    const offset = Math.max(Number(q.offset) || 0, 0);
+    // A search should look across everything, ignoring the view tab.
+    const useView = !q.search;
+    const { total, rows } = store.query({
       minScore: Number(q.minScore) || 0,
       state: q.state || undefined,
       category: q.category || undefined,
-      presence: q.presence || undefined,
-      status: q.status || undefined,
+      presence: (useView && viewFilters.presence) || q.presence || undefined,
+      status: useView ? viewFilters.status : undefined,
+      tier: q.tier || undefined,
+      hasPhone: useView ? viewFilters.hasPhone : undefined,
+      hasEmail: useView ? viewFilters.hasEmail : undefined,
       problem: q.problem || undefined,
       search: q.search || undefined,
       sort: q.sort || 'score',
-      limit: Number(q.limit) || 0,
+      limit,
+      offset,
+      withTotal: true,
     });
-    res.json({ count: leads.length, leads, facets: facets(store.all()) });
+    // Cheap counts for the view tabs (numbers/emails/social) so the tabs stay
+    // accurate even though we only ship one page of leads.
+    const all = store.all();
+    const viewCounts = {
+      numbers: all.filter((l) => l.business?.phone).length,
+      emails: all.filter((l) => l.business?.email && l.business?.emailStatus !== 'risky').length,
+      social: all.filter((l) => l.presence === 'social_only').length,
+    };
+    res.json({ total, count: rows.length, offset, limit, leads: rows, facets: facets(all), viewCounts });
+  });
+
+  // Full single lead (used if the list ever goes light; also handy for deep links).
+  app.get('/api/leads/:id', (req, res) => {
+    const l = store.get(req.params.id);
+    if (!l) return res.status(404).json({ error: 'not found' });
+    res.json(l);
   });
 
   // ── Special Requests: bespoke, criteria-driven lead pulls (own tab) ────────

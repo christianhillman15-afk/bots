@@ -50,6 +50,15 @@ async function boot() {
   $('#supabaseBtn').addEventListener('click', syncSupabase);
   $('#restoreBtn').addEventListener('click', () => $('#restoreFile').click());
   $('#restoreFile').addEventListener('change', handleRestore);
+  // Tools drawer (hamburger menu)
+  const drawer = $('#drawer');
+  const openDrawer = () => { drawer.hidden = false; requestAnimationFrame(() => drawer.classList.add('open')); };
+  const closeDrawer = () => { drawer.classList.remove('open'); setTimeout(() => { drawer.hidden = true; }, 200); };
+  $('#menuBtn')?.addEventListener('click', openDrawer);
+  $('#drawerClose')?.addEventListener('click', closeDrawer);
+  drawer?.addEventListener('click', (e) => { if (e.target === drawer) closeDrawer(); });
+  drawer?.querySelectorAll('.drawer__btn').forEach((b) => b.addEventListener('click', () => setTimeout(closeDrawer, 150)));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !drawer.hidden) closeDrawer(); });
   // Create Customer modal
   $('#custClose')?.addEventListener('click', closeCustomerModal);
   $('#custCancel')?.addEventListener('click', closeCustomerModal);
@@ -321,15 +330,19 @@ function qs() {
   if (state.state) p.set('state', state.state);
   if (state.presence) p.set('presence', state.presence);
   if (state.category) p.set('category', state.category);
+  if (state.tier) p.set('tier', state.tier);
   if (state.search) p.set('search', state.search);
   p.set('sort', state.sort);
   return p.toString();
 }
 
 async function refresh() {
+  // The server now does ALL filtering + paging (was client-side over the whole
+  // 10k set — the reason it "took forever"). We fetch just one page.
+  const url = `/api/leads?${qs()}&view=${encodeURIComponent(state.view)}&limit=200`;
   const [stats, data] = await Promise.all([
     fetch('/api/stats').then((r) => r.json()),
-    fetch('/api/leads?' + qs()).then((r) => r.json()),
+    fetch(url).then((r) => r.json()),
   ]);
   renderStats(stats);
   // populate state filter from facets once
@@ -339,25 +352,12 @@ async function refresh() {
     }
     if (state.state) $('#fState').value = state.state;
   }
-  renderViewTabs(data.facets, data.leads);
-  let leads = data.leads;
-  if (state.tier) leads = leads.filter((l) => l.score?.tier === state.tier);
-  const st = (l) => l.status || 'new';
-  // When you're looking something up, the search wins — show the match no matter
-  // which tab is open. Otherwise apply the active view-tab filter.
-  if (!state.search) {
-    // Call-tracking views
-    if (state.view === 'tocall') leads = leads.filter((l) => st(l) === 'new');
-    else if (state.view === 'called') leads = leads.filter((l) => st(l) === 'called');
-    else if (state.view === 'noanswer') leads = leads.filter((l) => st(l) === 'no_answer');
-    else if (state.view === 'callback') leads = leads.filter((l) => st(l) === 'callback');
-    // Channel views
-    else if (state.view === 'numbers') leads = leads.filter((l) => l.business?.phone);
-    else if (state.view === 'emails') leads = leads.filter((l) => l.business?.email && l.business?.emailStatus !== 'risky');
-    else if (state.view === 'social') leads = leads.filter((l) => l.presence === 'social_only');
-    // 'all' shows everything
-  }
-  $('#resultCount').textContent = `${leads.length} lead${leads.length === 1 ? '' : 's'}`;
+  renderViewTabs(data.facets, data.viewCounts || {});
+  const leads = data.leads || [];
+  const total = data.total ?? leads.length;
+  $('#resultCount').textContent = total > leads.length
+    ? `${total.toLocaleString()} leads (showing top ${leads.length})`
+    : `${total.toLocaleString()} lead${total === 1 ? '' : 's'}`;
   renderLeads(leads);
   // NOTE: the auto/hunt/emergency status panels are intentionally NOT fetched
   // here — refresh() runs on every search keystroke, and those calls (esp. the
@@ -402,16 +402,13 @@ async function setEmergency(stopped) {
   } catch { if (btn) btn.disabled = false; alert('Could not reach the server.'); }
 }
 
-function renderViewTabs(facets, allLeads = []) {
+function renderViewTabs(facets, viewCounts = {}) {
   const c = facets?.status || {};
-  const nNum = allLeads.filter((l) => l.business?.phone).length;
-  const nEmail = allLeads.filter((l) => l.business?.email && l.business?.emailStatus !== 'risky').length;
-  const nSocial = allLeads.filter((l) => l.presence === 'social_only').length;
   const tabs = [
     ['all', '📋 All', ''],
-    ['numbers', '📞 Numbers', nNum],
-    ['emails', '✉️ Emails', nEmail],
-    ['social', '📱 Social only', nSocial],
+    ['numbers', '📞 Numbers', viewCounts.numbers || 0],
+    ['emails', '✉️ Emails', viewCounts.emails || 0],
+    ['social', '📱 Social only', viewCounts.social || 0],
     ['tocall', 'To Call', c.new || 0],
     ['called', '✅ Called', c.called || 0],
     ['noanswer', '📵 No Answer', c.no_answer || 0],

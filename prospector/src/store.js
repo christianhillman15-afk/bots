@@ -150,9 +150,14 @@ export class LeadStore {
     problem,
     status,
     presence,
+    tier,
+    hasPhone,
+    hasEmail,
     search,
     sort = 'score',
     limit = 0,
+    offset = 0,
+    withTotal = false,
   } = {}) {
     let rows = this.all().filter((l) => (l.score?.value ?? 0) >= minScore);
     if (state) rows = rows.filter((l) => l.business?.state === state);
@@ -163,6 +168,9 @@ export class LeadStore {
       );
     if (status) rows = rows.filter((l) => (l.status || 'new') === status);
     if (presence) rows = rows.filter((l) => l.presence === presence);
+    if (tier) rows = rows.filter((l) => l.score?.tier === tier);
+    if (hasPhone) rows = rows.filter((l) => l.business?.phone);
+    if (hasEmail) rows = rows.filter((l) => l.business?.email && l.business?.emailStatus !== 'risky');
     if (problem) rows = rows.filter((l) => (l.audit?.problems || []).some((p) => p.code === problem));
     if (search) {
       // Universal lookup: paste a name, phone, email, website, owner, city,
@@ -197,6 +205,8 @@ export class LeadStore {
       recent: (a, b) => (b.firstSeen || '').localeCompare(a.firstSeen || ''),
     };
     rows.sort(sorters[sort] || sorters.score);
-    return limit > 0 ? rows.slice(0, limit) : rows;
+    const total = rows.length;
+    const page = limit > 0 ? rows.slice(offset, offset + limit) : rows;
+    return withTotal ? { total, rows: page } : page;
   }
 }

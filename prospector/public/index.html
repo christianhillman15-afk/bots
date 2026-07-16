@@ -19,25 +19,44 @@
     <div class="topbar__right">
       <span id="modeBadge" class="badge badge--demo">DEMO</span>
       <span id="usageBadge" class="usage" hidden></span>
-      <div class="toolbar">
-        <button id="verifyBtn" class="btn btn--ghost" title="Google-search the 'no website' leads to confirm or find their real site (needs Gemini key)">🔍 Verify websites</button>
-        <button id="ownersBtn" class="btn btn--ghost" title="Find owner names to personalize outreach (needs Gemini key)">👤 Find owners</button>
-        <button id="emailBtn" class="btn btn--ghost" title="Scrape lead sites AND web-search for emails on no-website leads (uses search budget)">✉️ Find emails</button>
-        <button id="phoneBtn" class="btn btn--ghost" title="Line-type phone numbers via Twilio (mobile vs landline) so Daily Phones skips landlines. Needs Twilio keys.">📱 Verify phones</button>
-        <button id="rescoreBtn" class="btn btn--ghost" title="Regenerate openers + full script on every lead">↻ Refresh scripts</button>
-        <span class="toolbar__sep"></span>
-        <button id="dailyEmailBtn" class="btn btn--ghost" title="Download only NEW emails you haven't saved yet — hand to your sending service. Marks them saved so no email ever repeats.">📤 Daily Emails</button>
-        <button id="dailyPhoneBtn" class="btn btn--ghost" title="Download only NEW phone numbers you haven't saved yet. Marks them saved so no number ever repeats.">📞 Daily Phones</button>
-        <button id="instantlyBtn" class="btn btn--ghost" title="Download ALL emailable leads (use if your sending service removes duplicates itself)">→ Full email CSV</button>
-        <button id="exportBtn" class="btn btn--ghost" title="Download all filtered leads as a spreadsheet">⬇ Export CSV</button>
-        <span class="toolbar__sep"></span>
-        <button id="backupBtn" class="btn btn--ghost" title="Download a full backup of ALL your leads to your computer — do this regularly so a server problem can never wipe them">💾 Backup</button>
-        <button id="supabaseBtn" class="btn btn--ghost" title="Push every lead to your Supabase cloud database (durable — survives any server problem). Needs Supabase keys in .env.">☁️ Sync to Supabase</button>
-        <button id="restoreBtn" class="btn btn--ghost" title="Restore your leads from a backup file (adds any you're missing; never deletes)">⤒ Restore</button>
+      <button id="menuBtn" class="menu-btn" aria-label="Open menu" title="Tools &amp; exports">☰</button>
+    </div>
+  </header>
+
+  <!-- Slide-out tools drawer (opened by the ☰ button) -->
+  <div class="drawer" id="drawer" hidden>
+    <div class="drawer__panel">
+      <div class="drawer__head">
+        <b>Tools &amp; exports</b>
+        <button id="drawerClose" class="menu-btn" aria-label="Close menu">✕</button>
+      </div>
+
+      <div class="drawer__group">
+        <span class="drawer__label">Enrich leads</span>
+        <button id="verifyBtn" class="drawer__btn" title="Google-search the 'no website' leads to confirm or find their real site (needs Gemini key)">🔍 Verify websites</button>
+        <button id="ownersBtn" class="drawer__btn" title="Find owner names to personalize outreach (needs Gemini key)">👤 Find owners</button>
+        <button id="emailBtn" class="drawer__btn" title="Scrape lead sites AND web-search for emails on no-website leads (uses search budget)">✉️ Find emails</button>
+        <button id="phoneBtn" class="drawer__btn" title="Line-type phone numbers via Twilio (mobile vs landline). Needs Twilio keys.">📱 Verify phones</button>
+        <button id="rescoreBtn" class="drawer__btn" title="Regenerate openers + full script on every lead">↻ Refresh scripts</button>
+      </div>
+
+      <div class="drawer__group">
+        <span class="drawer__label">Export &amp; send lists</span>
+        <button id="dailyEmailBtn" class="drawer__btn" title="Download only NEW emails you haven't saved yet. Marks them saved so no email repeats.">📤 Daily Emails</button>
+        <button id="dailyPhoneBtn" class="drawer__btn" title="Download only NEW phone numbers you haven't saved yet. Marks them saved so no number repeats.">📞 Daily Phones</button>
+        <button id="instantlyBtn" class="drawer__btn" title="Download ALL emailable leads (use if your sending service removes duplicates itself)">→ Full email CSV</button>
+        <button id="exportBtn" class="drawer__btn" title="Download all filtered leads as a spreadsheet">⬇ Export CSV</button>
+      </div>
+
+      <div class="drawer__group">
+        <span class="drawer__label">Your data</span>
+        <button id="backupBtn" class="drawer__btn" title="Download a full backup of ALL your leads to your computer.">💾 Backup</button>
+        <button id="supabaseBtn" class="drawer__btn" title="Push every lead to your Supabase cloud database (durable). Needs Supabase keys.">☁️ Sync to Supabase</button>
+        <button id="restoreBtn" class="drawer__btn" title="Restore your leads from a backup file (adds any you're missing; never deletes)">⤒ Restore</button>
         <input type="file" id="restoreFile" accept="application/json,.json" hidden />
       </div>
     </div>
-  </header>
+  </div>
 
   <!-- Page tabs -->
   <nav class="pagetabs">
