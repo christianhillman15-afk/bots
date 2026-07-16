@@ -1,4 +1,5 @@
 import { clamp, round, usd } from '../util.js';
+import { qualify, hasUsablePhone, hasUsableEmail } from './qualify.js';
 
 /*
  * The Launch Media Fit Score answers one question:
@@ -52,22 +53,52 @@ export function scoreLead(business, audit) {
     WEIGHTS.presence * severity +
     WEIGHTS.affordability * affordability +
     WEIGHTS.market * market;
-  const value = round(raw * 100);
+  let value = round(raw * 100);
 
-  // ── Opportunity estimate (transparent, for the outreach pitch) ──────────
-  // Deliberately conservative so the number stays credible in a cold pitch.
-  // Realistic monthly jobs this business could book from online search...
+  // ── Qualification + contactability GATE ─────────────────────────────────
+  // The top of the list must be businesses you can actually call first — not a
+  // site with one cosmetic nit, and not a business with no way to reach it.
+  const qual = qualify(business, audit);
+  const hasPhone = hasUsablePhone(business.phone);
+  const emailOk = hasUsableEmail(business);
+  const hasOwner = Boolean((business.ownerName || '').trim());
+  // Guessed/pattern emails count for less than a published one.
+  const emailStrong = emailOk && business.emailStatus !== 'guessed' && business.emailSource !== 'pattern';
+  const contactabilityScore = clamp(
+    round((hasPhone ? 55 : 0) + (emailStrong ? 35 : emailOk ? 18 : 0) + (hasOwner ? 10 : 0)),
+    0, 100
+  );
+
+  const penalties = [];
+  // A lead nobody can reach cannot be a top call — hard-cap below the hot/warm line.
+  if (!qual.contactable) { value = Math.min(value, 45); penalties.push('No usable phone or email (capped)'); }
+  else if (contactabilityScore < 40) { value = Math.max(0, value - 8); penalties.push('Thin contact info'); }
+  // One minor website issue must not reach the top of the call list.
+  if (qual.status === 'low_priority') { value = Math.min(value, 50); penalties.push('Only minor website issues (capped)'); }
+  // Closed / temporarily-closed businesses are not prospects.
+  if (business.businessStatus && business.businessStatus !== 'OPERATIONAL') {
+    value = Math.min(value, 15); penalties.push(`Business status: ${business.businessStatus}`);
+  }
+  value = clamp(round(value), 0, 100);
+
+  // ── Opportunity estimate — a RANGE with a confidence label, never a fake
+  // precise "you're losing $X". Deliberately conservative for a cold pitch. ──
   const estMonthlyLeads = round(2 + market * 12 + rScore * 16); // ~2–30
-  // ...a broken/absent site forfeits ~25% of those would-be jobs...
-  const lostJobs = estMonthlyLeads * severity * 0.25;
-  // ...valued at the job ticket, but capped so $450k custom-home tickets
-  // don't produce absurd figures. Whole estimate capped at $50k/mo.
+  const lostJobs = estMonthlyLeads * severity * 0.25; // ~25% of would-be jobs
   const effectiveTicket = Math.min(business.avgTicketUsd || 350, 12000);
   const opportunityUsd = clamp(round((lostJobs * effectiveTicket) / 100) * 100, 0, 50000);
+  const estimatedOpportunityLow = clamp(round((opportunityUsd * 0.5) / 100) * 100, 0, 50000);
+  const estimatedOpportunityHigh = clamp(round((opportunityUsd * 1.6) / 100) * 100, 0, 80000);
+  // Confidence: we only trust the number when we have real revenue signal
+  // (reviews) AND a known ticket size for the trade.
+  const opportunityConfidence =
+    reviews >= 50 && business.avgTicketUsd ? 'medium' : reviews > 0 ? 'low' : 'very_low';
+  const opportunityAssumptions =
+    `~${estMonthlyLeads} monthly online leads × ${round(severity * 25)}% lost to a ${audit.presence} web presence × ~${usd(effectiveTicket)}/job. Estimate, not a measured loss.`;
 
-  const openers = buildOpeners(business, audit, { opportunityUsd, estMonthlyLeads });
+  const openers = buildOpeners(business, audit, { opportunityUsd, estMonthlyLeads, opportunityConfidence, estimatedOpportunityLow, estimatedOpportunityHigh });
   const hooks = buildHooks(business, audit);
-  const script = buildScript(business, audit, { opportunityUsd });
+  const script = buildScript(business, audit, { opportunityUsd, opportunityConfidence, estimatedOpportunityLow, estimatedOpportunityHigh });
 
   const tier =
     value >= 75 ? 'hot' : value >= 58 ? 'warm' : value >= 40 ? 'cool' : 'cold';
@@ -87,9 +118,23 @@ export function scoreLead(business, audit) {
       presence: round(severity * 100),
       affordability: round(affordability * 100),
       market: round(market * 100),
+      contactability: contactabilityScore,
     },
+    // Qualification verdict + why (drives the "call these first" ordering).
+    qualificationStatus: qual.status,
+    qualificationReasons: qual.reasons,
+    contactabilityScore,
+    criticalIssueCount: qual.criticalIssueCount,
+    highIssueCount: qual.highIssueCount,
+    mediumIssueCount: qual.mediumIssueCount,
+    lowIssueCount: qual.lowIssueCount,
+    scorePenalties: penalties,
     estMonthlyLeads,
     opportunityUsd,
+    estimatedOpportunityLow,
+    estimatedOpportunityHigh,
+    opportunityConfidence,
+    opportunityAssumptions,
     reasons: buildReasons(business, audit, { affordability, market, reviews }),
     openers,
     hooks,
@@ -118,8 +163,13 @@ function buildReasons(business, audit, { affordability, market, reviews }) {
   if ((business.avgTicketUsd || 0) >= 1500) r.push(`High-ticket trade (~${usd(business.avgTicketUsd)}/job) — one recovered customer pays for months of Launch Media.`);
   // Market
   if (market >= 0.6) r.push(`Big, busy market (${business.city}, ${business.state}) — lots of demand leaking to competitors.`);
-  // Competitor angle
-  if (business.topCompetitor?.name) r.push(`Competitor "${business.topCompetitor.name}" (${business.topCompetitor.reviewCount || 'many'} reviews) is outranking them and taking these customers.`);
+  // Competitor angle — truthful review-gap framing only (we have no rank data,
+  // so we never claim anyone "ranks first" or is "taking their customers").
+  const comp = business.topCompetitor;
+  if (comp?.name && comp.reviewCount) {
+    const gap = comp.reviewCount - (business.reviewCount || 0);
+    if (gap > 0) r.push(`A nearby "${comp.name}" has ${comp.reviewCount} reviews vs their ${business.reviewCount || 0} — a ${gap}-review gap that can make the competitor look more established to customers comparing options.`);
+  }
   return r;
 }
 
@@ -129,7 +179,7 @@ function buildReasons(business, audit, { affordability, market, reviews }) {
  * web problem, and the estimated money being lost. The first one is the primary
  * "pitch" used in CSV exports.
  */
-function buildOpeners(business, audit, { opportunityUsd, estMonthlyLeads }) {
+function buildOpeners(business, audit, { opportunityUsd, estMonthlyLeads, opportunityConfidence, estimatedOpportunityLow, estimatedOpportunityHigh }) {
   const name = business.name || 'there';
   const cat = (business.categoryLabel || 'business').toLowerCase();
   const cityPhrase = business.city ? ` in ${business.city}, ${business.state || ''}`.trimEnd() : '';
@@ -140,8 +190,10 @@ function buildOpeners(business, audit, { opportunityUsd, estMonthlyLeads }) {
   const andMore = extraCount ? ` (plus ${extraCount} more)` : '';
   const owner = (business.ownerName || '').trim().split(/\s+/)[0] || '';
   const comp = business.topCompetitor;
-  const competitorLine = comp?.name
-    ? ` Meanwhile ${comp.name} (${comp.reviewCount ? comp.reviewCount + '+ ' : ''}reviews) is showing up first and pulling in those customers.`
+  // Truthful competitor line: review-gap only (no "ranks first" / "stealing"
+  // claims), and only when we actually have the competitor's review count.
+  const competitorLine = comp?.name && comp.reviewCount
+    ? ` For comparison, a nearby ${comp.name} shows ${comp.reviewCount} reviews — more reviews can make a competitor look more established when customers are comparing options.`
     : '';
 
   // The pain, phrased per presence type
@@ -168,10 +220,13 @@ function buildOpeners(business, audit, { opportunityUsd, estMonthlyLeads }) {
       ? `With ${reviews} reviews (${rating}) you're clearly doing real work${cityPhrase}`
       : `You're up and running${cityPhrase}`;
 
+  // Honest opportunity language: only float a dollar figure when we have real
+  // signal (medium confidence), and always frame it as a rough estimate. With
+  // thin data, talk in terms of calls/jobs — never a fake precise loss.
   const cost =
-    opportunityUsd >= 500
-      ? `my rough estimate is that's costing you around ${usd(opportunityUsd)}/month in jobs slipping to competitors`
-      : `that's quietly sending customers to competitors who show up better online`;
+    opportunityConfidence === 'medium' && opportunityUsd >= 500
+      ? `my rough estimate — and it's just an estimate — is that's on the order of ${usd(estimatedOpportunityLow)}–${usd(estimatedOpportunityHigh)}/month in jobs that may be slipping to competitors who show up better online`
+      : `that likely means a few extra calls or quote requests a month are going to competitors who show up better online`;
 
   const offer = `At Launch Media we build you a modern, mobile, conversion-built website at $0 down, and our AI runs your SEO, Google Ads, and social posts from one place — so the phone actually rings. You only keep going if it's bringing you business.`;
 
@@ -250,7 +305,7 @@ function buildHooks(business, audit) {
 }
 
 /* A complete, structured cold-call script the rep can read top to bottom. */
-function buildScript(business, audit, { opportunityUsd }) {
+function buildScript(business, audit, { opportunityUsd, opportunityConfidence, estimatedOpportunityLow, estimatedOpportunityHigh }) {
   const name = business.name || 'there';
   const owner = (business.ownerName || '').trim().split(/\s+/)[0] || '';
   const askFor = owner ? `Hi, could I grab ${owner} for a sec?` : `Hi, is this ${name}?`;
@@ -260,8 +315,9 @@ function buildScript(business, audit, { opportunityUsd }) {
   const rating = business.rating ? `${business.rating}★` : 'strong reviews';
   const topProblem = audit.problems?.[0]?.label?.toLowerCase() || 'a few issues';
   const comp = business.topCompetitor;
-  const competitorLine = comp?.name
-    ? ` Honestly, right now ${comp.name} is showing up ahead of you and pulling in a lot of those customers.`
+  // Truthful review-gap framing only — no rank claims.
+  const competitorLine = comp?.name && comp.reviewCount
+    ? ` For context, a nearby ${comp.name} shows ${comp.reviewCount} reviews to your ${reviews} — customers comparing options may lean toward whoever looks more established.`
     : '';
   let problemLong;
   if (audit.presence === 'none') problemLong = `when I went looking I couldn't find a website for you anywhere — just your Google listing`;
@@ -275,9 +331,9 @@ function buildScript(business, audit, { opportunityUsd }) {
       ? `\n• "Actually, we DO have a website." → "Oh perfect — I couldn't find it when I searched, and honestly that's half the problem: if it's not coming up when I look for ${cat}${cityPhrase}, your customers probably aren't finding it either. What's the web address? … Mind if I take a quick look and send you a free teardown of what'd help it actually show up and bring in calls?"`
       : '';
   const costLine =
-    opportunityUsd >= 500
-      ? `By my rough math that's around ${usd(opportunityUsd)} a month in jobs going to competitors who just show up better online.`
-      : `That's sending business to competitors who simply show up better online.`;
+    opportunityConfidence === 'medium' && opportunityUsd >= 500
+      ? `By my rough math — and this is a ballpark estimate, not an exact figure — that's on the order of ${usd(estimatedOpportunityLow)}–${usd(estimatedOpportunityHigh)} a month in jobs that may be going to competitors who show up better online.`
+      : `That likely sends a few jobs a month to competitors who simply show up better online.`;
 
   return [
     `▸ OPENING\n"${askFor} Hey, my name's Christian with Launch Media — we're a web & marketing company. Did I catch you at an okay time for 60 seconds? I promise to be quick."\n(If "I'm busy" → "Totally get it — 30 seconds, and if it's not relevant I'll let you go. Fair?")`,

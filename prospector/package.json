@@ -10,7 +10,8 @@
     "prospector": "bin/prospector.js"
   },
   "scripts": {
-    "scan": "node bin/prospector.js scan",
+    "test": "node --test",
+  "scan": "node bin/prospector.js scan",
     "list": "node bin/prospector.js list",
     "export": "node bin/prospector.js export",
     "stats": "node bin/prospector.js stats",
