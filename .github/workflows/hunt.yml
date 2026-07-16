@@ -7,9 +7,11 @@ name: Cloud Hunt
 # A hard monthly Places cap (PLACES_MONTHLY_CALL_CAP) guards against runaway cost.
 # Each run scans the next metro × category chunk and writes to Supabase.
 on:
-  schedule:
-    - cron: '17 * * * *'   # hourly, at :17 past the hour (UTC; GitHub may delay under load)
-  workflow_dispatch: {}      # lets you run it on demand from the Actions tab
+  # SCHEDULE DISABLED — the hourly cron is turned off so the cloud hunt makes NO
+  # Google Places calls and cannot bill. Re-enable by uncommenting the cron.
+  # schedule:
+  #   - cron: '17 * * * *'
+  workflow_dispatch: {}      # manual-only: it runs ONLY if you click "Run workflow"
 
 # Never let two hunts overlap (they share one cursor in Supabase).
 concurrency:
