@@ -598,10 +598,28 @@ function renderLeads(leads) {
   root.querySelectorAll('.actbtn').forEach((b) => b.addEventListener('click', async (e) => {
     if (b.classList.contains('act-recheck')) return; // handled separately below
     if (b.classList.contains('act-customer')) return; // handled separately below
+    if (b.classList.contains('act-website')) return; // handled separately below
     e.stopPropagation();
     b.disabled = true;
     await setStatus(b.dataset.id, b.dataset.status);
     refresh();
+  }));
+  root.querySelectorAll('.act-website').forEach((b) => b.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const orig = b.textContent;
+    b.disabled = true; b.textContent = '🌐 Building your site…';
+    try {
+      const r = await fetch('/api/leads/' + encodeURIComponent(b.dataset.id) + '/website', { method: 'POST' });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Failed');
+      await navigator.clipboard.writeText(d.url).catch(() => {});
+      b.textContent = '✓ Live — link copied!';
+      window.open(d.url, '_blank');
+      setTimeout(refresh, 1400);
+    } catch (err) {
+      b.textContent = '✗ ' + (err.message || 'Failed');
+      setTimeout(() => { b.textContent = orig; b.disabled = false; }, 3500);
+    }
   }));
   root.querySelectorAll('.act-customer').forEach((b) => b.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -809,6 +827,8 @@ function leadCard(l) {
 
       <div class="detail__actions">
         <button class="actbtn act-customer" data-cust="${esc(JSON.stringify({ leadId: l.id, businessName: b.name || '', ownerName: b.ownerName || '', phone: b.phone || '', email: b.email || '', website: b.website || '', address: b.address || '', city: b.city || '', state: b.state || '' }))}" title="They said yes on the call — create a customer and set up payment">✅ Create Customer</button>
+        <button class="actbtn act-website" data-id="${esc(l.id)}" title="Generate a professional demo website for this business and publish it live — great to show on a call">🌐 Create Website</button>
+        ${b.demoSiteUrl ? `<a class="linkbtn" href="${safeUrl(b.demoSiteUrl) || '#'}" target="_blank" rel="noopener">🌐 View live site ↗</a>` : ''}
         ${b.website ? `<a class="linkbtn" href="https://pagespeed.web.dev/report?url=${encodeURIComponent(b.website)}" target="_blank" rel="noopener">Run PageSpeed ↗</a>` : ''}
         ${noSiteClaim ? `<button class="actbtn act-recheck" data-id="${esc(l.id)}" title="Search the web again right now to double-check whether this business has a website">🔍 Re-check website</button>` : ''}
         ${noSiteClaim ? `<button class="actbtn act-hassite" data-id="${esc(l.id)}" data-status="has_site" title="You found out they DO have a website — pull this lead out of your call list">🌐 They have a site — remove</button>` : ''}

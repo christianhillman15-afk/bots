@@ -107,6 +107,8 @@ select:focus, input:focus { border-color: var(--purple); }
 /* Create Customer button + modal */
 .actbtn.act-customer { background: rgba(43,212,125,.14); border-color: rgba(43,212,125,.5); color: #b8f3d4; font-weight: 700; }
 .actbtn.act-customer:hover { background: rgba(43,212,125,.24); }
+.actbtn.act-website { background: rgba(59,130,246,.14); border-color: rgba(59,130,246,.5); color: #bcdcff; font-weight: 700; }
+.actbtn.act-website:hover { background: rgba(59,130,246,.24); }
 .cust-modal { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
   background: rgba(4,5,10,.72); padding: 20px; }
 .cust-modal[hidden] { display: none; }

@@ -125,6 +125,11 @@ export const config = {
   stripeSecretKey: process.env.STRIPE_SECRET_KEY?.trim() || '',
   stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY?.trim() || '',
   stripePriceId: process.env.STRIPE_PRICE_ID?.trim() || '', // recurring plan price id
+
+  // Netlify — auto-publishes a generated demo website for a lead ("I already
+  // built you one"). The token is a secret; keep it in .env only, never in the
+  // repo. From Netlify → User settings → Applications → Personal access tokens.
+  netlifyToken: process.env.NETLIFY_TOKEN?.trim() || process.env.NETLIFY_AUTH_TOKEN?.trim() || '',
 };
 
 /** True when we have a real Places key; otherwise we run on demo data. */

@@ -16,6 +16,8 @@ import { verifyMissingWebsites, enrichOwners, searchReady, searchUsage, recheckL
 import { createScheduler } from './scheduler.js';
 import { SpecialRequestStore, runSpecialRequest, HOME_SERVICE_CATEGORIES } from './specialRequests.js';
 import { CustomerStore } from './customers.js';
+import { buildSiteHtml } from './siteTemplate.js';
+import { deploySite, netlifyReady } from './netlify.js';
 import { googleSearchReady } from './enrich/googleSearch.js';
 import { crunchbaseReady } from './enrich/crunchbase.js';
 import { apolloReady } from './enrich/apollo.js';
@@ -267,6 +269,31 @@ export function startServer() {
       if (!r.ok) throw new Error(d.error?.message || `Stripe ${r.status}`);
       custStore.update(c.id, { paymentStatus: 'link_sent', activityNote: `Payment link created: ${d.url}` });
       res.json({ ok: true, url: d.url });
+    } catch (err) {
+      res.status(502).json({ error: err.message });
+    }
+  });
+
+  // ── Generate + publish a demo website for a lead (Netlify) ─────────────────
+  // "I already built you one — here's the link." Builds a self-contained,
+  // theme-varied one-pager from the lead's real info and publishes it to
+  // Netlify. Needs NETLIFY_TOKEN. Stores the URL on the lead so it persists.
+  app.post('/api/leads/:id/website', async (req, res) => {
+    const lead = store.get(req.params.id);
+    if (!lead) return res.status(404).json({ error: 'Lead not found.' });
+    if (!netlifyReady()) {
+      return res.status(400).json({ error: 'Netlify isn\'t set up yet. Add NETLIFY_TOKEN to .env to publish sites.' });
+    }
+    try {
+      const biz = { ...(lead.business || {}), id: lead.id };
+      const html = buildSiteHtml(biz);
+      const deployed = await deploySite({ files: { '/index.html': html } });
+      // Persist the URL on the lead so the dashboard shows "View site" next time.
+      lead.business = lead.business || {};
+      lead.business.demoSiteUrl = deployed.url;
+      lead.business.demoSiteAt = new Date().toISOString();
+      store.save();
+      res.json({ ok: true, url: deployed.url, adminUrl: deployed.adminUrl });
     } catch (err) {
       res.status(502).json({ error: err.message });
     }
