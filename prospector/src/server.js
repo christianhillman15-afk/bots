@@ -18,6 +18,7 @@ import { apolloReady } from './enrich/apollo.js';
 import { verifyPhones, twilioReady, needsLineType } from './enrich/phoneFinder.js';
 import { twilioUsage } from './enrich/twilioUsage.js';
 import { syncLeads, syncSpecialRequests, countLeads, supabaseReady, getHuntControl, setHuntControl } from './supabase.js';
+import { isStopped, stopState, engage, release } from './killSwitch.js';
 import { log } from './logger.js';
 
 /* Constant-time string compare to avoid leaking the password via timing. */
@@ -117,6 +118,27 @@ export function startServer() {
 
   app.use(requireAuth); // everything below requires the password (if set)
   app.use(express.json({ limit: '96mb' })); // large enough to restore a full backup
+
+  // EMERGENCY STOP gate: while engaged, block every route that could make a
+  // paid API call (scanning, verifying, special-request runs). Read-only routes,
+  // exports, and the stop-control route itself stay available so you can still
+  // see your leads and release the stop. Kept BEFORE express.static so it also
+  // guards the API cleanly.
+  const PAID_PATHS = [
+    '/api/scan', '/api/verify-websites', '/api/find-owners',
+    '/api/find-emails', '/api/verify-phones',
+  ];
+  app.use((req, res, next) => {
+    if (!isStopped()) return next();
+    const p = req.path;
+    const isPaid = PAID_PATHS.includes(p)
+      || /^\/api\/special-requests\/[^/]+\/run$/.test(p)
+      || /^\/api\/leads\/[^/]+\/recheck$/.test(p);
+    if (isPaid) {
+      return res.status(423).json({ error: 'Emergency stop is engaged — scanning and paid API calls are blocked. Release it to run again.', stopped: true });
+    }
+    next();
+  });
   app.use(express.static(config.publicDir));
 
   // Metadata for the UI (filters, categories, metros, mode)
@@ -144,6 +166,28 @@ export function startServer() {
   app.post('/api/auto/toggle', (req, res) => {
     scheduler.setEnabled(Boolean(req.body?.enabled));
     res.json({ ok: true, ...scheduler.status() });
+  });
+
+  // ── EMERGENCY STOP: one button that halts the whole prospector ─────────────
+  // Engaging it (1) blocks every paid route via the middleware above, (2) turns
+  // the auto-scanner off, and (3) turns the cloud hunt off in Supabase. Nothing
+  // can bill you until you deliberately release it.
+  app.get('/api/emergency-stop', (_req, res) => res.json(stopState()));
+  app.post('/api/emergency-stop', async (req, res) => {
+    const on = Boolean(req.body?.stopped);
+    if (on) {
+      engage('Emergency stop engaged from the dashboard.');
+      scheduler.setEnabled(false); // stop the droplet auto-scanner
+      if (supabaseReady()) {
+        try {
+          const cur = await getHuntControl();
+          await setHuntControl({ enabled: false, stopAfter: cur.stopAfter });
+        } catch (err) { log.warn(`emergency-stop: could not disable cloud hunt: ${err.message}`); }
+      }
+    } else {
+      release();
+    }
+    res.json({ ok: true, ...stopState() });
   });
 
   // ── Cloud hunt control (the month-long blitz kill switch + auto-stop date) ──

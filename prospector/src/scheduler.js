@@ -6,6 +6,7 @@ import { CATEGORIES } from './data/categories.js';
 import { runScan } from './scan.js';
 import { verifyMissingWebsites, enrichOwners, searchReady } from './enrich/websiteFinder.js';
 import { enrichEmails, verifyEmails } from './enrich/emailFinder.js';
+import { isStopped } from './killSwitch.js';
 import { log } from './logger.js';
 
 /**
@@ -68,6 +69,7 @@ export function createScheduler({ store, isBusy, setBusy }) {
   }
 
   async function tick() {
+    if (isStopped()) return; // emergency stop — no scanning, no paid API calls
     if (!enabled) return; // paused from the dashboard (or AUTO_SCAN off)
     if (isBusy()) {
       log.info('auto-scan: a scan is already running — skipping this tick');

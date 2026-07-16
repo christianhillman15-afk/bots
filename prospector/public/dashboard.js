@@ -338,6 +338,36 @@ async function refresh() {
   renderLeads(leads);
   renderAuto();
   renderHuntControl();
+  renderEmergency();
+}
+
+async function renderEmergency() {
+  const el = $('#emergency');
+  if (!el) return;
+  try {
+    const s = await fetch('/api/emergency-stop').then((r) => r.json());
+    if (s.stopped) {
+      el.className = 'emergency emergency--on';
+      el.innerHTML = `🛑 <b>EMERGENCY STOP is ON</b> — all scanning and paid API calls are blocked. Nothing can bill you. <button id="emResume" class="btn">Resume the prospector</button>`;
+      $('#emResume')?.addEventListener('click', () => setEmergency(false));
+    } else {
+      el.className = 'emergency';
+      el.innerHTML = `<button id="emStop" class="btn btn--danger">🛑 EMERGENCY STOP — halt everything</button> <span class="emergency__hint">Instantly stops all scanning + paid API calls (droplet + cloud hunt).</span>`;
+      $('#emStop')?.addEventListener('click', () => setEmergency(true));
+    }
+  } catch { el.innerHTML = ''; }
+}
+
+async function setEmergency(stopped) {
+  if (stopped && !confirm('EMERGENCY STOP: instantly halt ALL scanning and every paid API call (the auto-scanner and the cloud hunt). Nothing will be able to bill you until you press Resume. Continue?')) return;
+  const btn = $('#emStop') || $('#emResume');
+  if (btn) btn.disabled = true;
+  try {
+    await fetch('/api/emergency-stop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stopped }) });
+    await renderEmergency();
+    renderAuto();
+    renderHuntControl();
+  } catch { if (btn) btn.disabled = false; alert('Could not reach the server.'); }
 }
 
 function renderViewTabs(facets, allLeads = []) {
