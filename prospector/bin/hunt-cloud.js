@@ -18,7 +18,6 @@ import { runScan } from '../src/scan.js';
 import { METROS } from '../src/data/metros.js';
 import { CATEGORIES } from '../src/data/categories.js';
 import { enrichEmails, verifyEmails } from '../src/enrich/emailFinder.js';
-import { enrichOwners, verifyMissingWebsites, searchReady } from '../src/enrich/websiteFinder.js';
 import { supabaseReady, getScanCursor, setScanCursor, fetchExistingMeta, pushLeads, countLeads, getPlacesUsage, addPlacesUsage } from '../src/supabase.js';
 import { placesCallsSince } from '../src/providers/places.js';
 import { log } from '../src/logger.js';
@@ -47,22 +46,21 @@ async function main() {
   // Action runner; the real persistence is Supabase).
   placesCallsSince(true); // reset the billable-request counter for this tick
   const store = new LeadStore('/tmp/hunt-scratch.json');
-  const { stats } = await runScan({ metros: [metro], categories: cats, maxPerCity: config.autoScanMaxPerCity, store });
+  // Keep each tick small & fast so it always finishes and pushes (a scheduled
+  // job should never be a long-running grind).
+  const { stats } = await runScan({ metros: [metro], categories: cats, maxPerCity: 12, store });
   // Record the ACTUAL billable Places requests this tick made against the cap.
   await addPlacesUsage(placesCallsSince(true));
 
-  // Enrich this chunk. With no GEMINI key, searchReady() is false → emails come
-  // only from the FREE scrape/pattern path and the paid steps are skipped, so a
-  // scheduled hunt can't run up a bill.
+  // Light, FAST, FREE email pass only (bounded). Emails come from site-scraping
+  // + role patterns — no Gemini owner/website lookups, which are slow and would
+  // use an uncapped search budget in an ephemeral Action. Deeper enrichment is a
+  // separate step; keeping the tick quick means it always finishes and pushes.
   if (config.autoEnrich) {
     try {
-      const e = await enrichEmails({ store, limit: config.autoEnrichLimit });
-      await verifyEmails({ store, limit: config.autoEnrichLimit });
-      log.ok(`cloud-hunt: +${e.found || 0} emails (free path)`);
-      if (searchReady()) {
-        await enrichOwners({ store, limit: config.autoEnrichLimit });
-        await verifyMissingWebsites({ store, limit: config.autoEnrichLimit });
-      }
+      const e = await enrichEmails({ store, limit: 40 });
+      await verifyEmails({ store, limit: 40 });
+      log.ok(`cloud-hunt: +${e.found || 0} emails (free scrape)`);
     } catch (err) { log.warn(`enrich skipped: ${err.message}`); }
   }
 
