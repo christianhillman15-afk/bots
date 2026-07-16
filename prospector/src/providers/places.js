@@ -59,7 +59,17 @@ function normalize(place) {
   };
 }
 
+// Counts every BILLABLE Places request made, so the cloud hunt can enforce a
+// hard daily cap on real API calls. Read+reset with placesCallsSince(true).
+let _placesCalls = 0;
+export function placesCallsSince(reset = false) {
+  const n = _placesCalls;
+  if (reset) _placesCalls = 0;
+  return n;
+}
+
 async function postPage(body, attempt = 0) {
+  if (attempt === 0) _placesCalls++; // count the billable request once (not retries)
   const res = await fetch(ENDPOINT, {
     method: 'POST',
     headers: {

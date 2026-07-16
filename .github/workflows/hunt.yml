@@ -1,7 +1,11 @@
 name: Cloud Hunt
 
-# Runs the lead scanner on a schedule — free, no server. Each run scans the next
-# metro × category chunk and writes leads to Supabase (see prospector/bin/hunt-cloud.js).
+# Runs the lead scanner on a schedule with NO server (GitHub Actions hosting is
+# free). Note: Google Places IS billed — ~1,000 Text Search calls/month are free,
+# then ~$32/1k. This hourly hunt does ~5-15 Places calls per run, so continuous
+# scanning costs money past the free tier (same as the droplet's auto-scan did).
+# A hard monthly Places cap (PLACES_MONTHLY_CALL_CAP) guards against runaway cost.
+# Each run scans the next metro × category chunk and writes to Supabase.
 on:
   schedule:
     - cron: '17 * * * *'   # hourly, at :17 past the hour (UTC; GitHub may delay under load)

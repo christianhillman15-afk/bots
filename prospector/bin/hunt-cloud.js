@@ -19,24 +19,37 @@ import { METROS } from '../src/data/metros.js';
 import { CATEGORIES } from '../src/data/categories.js';
 import { enrichEmails, verifyEmails } from '../src/enrich/emailFinder.js';
 import { enrichOwners, verifyMissingWebsites, searchReady } from '../src/enrich/websiteFinder.js';
-import { supabaseReady, getScanCursor, setScanCursor, fetchExistingMeta, pushLeads, countLeads } from '../src/supabase.js';
+import { supabaseReady, getScanCursor, setScanCursor, fetchExistingMeta, pushLeads, countLeads, getPlacesUsage, addPlacesUsage } from '../src/supabase.js';
+import { placesCallsSince } from '../src/providers/places.js';
 import { log } from '../src/logger.js';
 
 async function main() {
   if (!supabaseReady()) { log.err('SUPABASE_URL + SUPABASE_SERVICE_KEY are required.'); process.exit(1); }
   if (!isLive()) { log.err('GOOGLE_PLACES_API_KEY is required for a live hunt.'); process.exit(1); }
 
+  // DAILY PLACES BUDGET GUARD: stop scanning once today's cap is reached so the
+  // hunt never bills past the free tier. (The hard guarantee is the daily quota
+  // set on the Places API in Google Cloud; this is the in-app companion.)
+  const budget = await getPlacesUsage();
+  if (budget.remaining <= 0) {
+    log.warn(`cloud-hunt: daily Places cap reached (${budget.used}/${budget.cap}). Skipping scan until tomorrow. No charge.`);
+    return;
+  }
+
   const cur = await getScanCursor();
   const metro = METROS[cur.metroIndex % METROS.length];
   const cats = CATEGORIES.slice(cur.catIndex, cur.catIndex + config.autoScanChunk);
   if (!cats.length) { log.warn('No categories at this cursor — resetting.'); await setScanCursor({ metroIndex: 0, catIndex: 0 }); return; }
 
-  log.step(`cloud-hunt: ${metro.city}, ${metro.state} · ${cats.map((c) => c.label).join(', ')}`);
+  log.step(`cloud-hunt: ${metro.city}, ${metro.state} · ${cats.map((c) => c.label).join(', ')} · Places ${budget.used}/${budget.cap} today`);
 
   // Ephemeral in-memory store just for this chunk (file lives in the throwaway
   // Action runner; the real persistence is Supabase).
+  placesCallsSince(true); // reset the billable-request counter for this tick
   const store = new LeadStore('/tmp/hunt-scratch.json');
   const { stats } = await runScan({ metros: [metro], categories: cats, maxPerCity: config.autoScanMaxPerCity, store });
+  // Record the ACTUAL billable Places requests this tick made against the cap.
+  await addPlacesUsage(placesCallsSince(true));
 
   // Enrich this chunk. With no GEMINI key, searchReady() is false → emails come
   // only from the FREE scrape/pattern path and the paid steps are skipped, so a
