@@ -18,13 +18,28 @@ import { runScan } from '../src/scan.js';
 import { METROS } from '../src/data/metros.js';
 import { CATEGORIES } from '../src/data/categories.js';
 import { enrichEmails, verifyEmails } from '../src/enrich/emailFinder.js';
-import { supabaseReady, getScanCursor, setScanCursor, fetchExistingMeta, pushLeads, countLeads, getPlacesUsage, addPlacesUsage } from '../src/supabase.js';
+import { supabaseReady, getScanCursor, setScanCursor, fetchExistingMeta, pushLeads, countLeads, getPlacesUsage, addPlacesUsage, getHuntControl, setHuntControl } from '../src/supabase.js';
 import { placesCallsSince } from '../src/providers/places.js';
 import { log } from '../src/logger.js';
 
 async function main() {
   if (!supabaseReady()) { log.err('SUPABASE_URL + SUPABASE_SERVICE_KEY are required.'); process.exit(1); }
   if (!isLive()) { log.err('GOOGLE_PLACES_API_KEY is required for a live hunt.'); process.exit(1); }
+
+  // KILL SWITCH + AUTO-STOP: before spending anything, honor the hunt-control
+  // record. If it's been turned off from the dashboard, or the blitz end-date has
+  // passed, stop here — and if it just expired, flip it off so it stays off.
+  const control = await getHuntControl();
+  if (!control.enabled) {
+    if (control.expired) {
+      await setHuntControl({ enabled: false, stopAfter: control.stopAfter });
+      log.warn(`cloud-hunt: auto-stop date (${control.stopAfter}) has passed — hunt stopped. No charge.`);
+    } else {
+      log.warn('cloud-hunt: turned OFF (kill switch). Skipping scan. No charge.');
+    }
+    return;
+  }
+  if (control.stopAfter) log.info(`cloud-hunt: running until ${control.stopAfter} (auto-stop), then it stops on its own.`);
 
   // DAILY PLACES BUDGET GUARD: stop scanning once today's cap is reached so the
   // hunt never bills past the free tier. (The hard guarantee is the daily quota

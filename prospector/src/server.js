@@ -17,7 +17,7 @@ import { crunchbaseReady } from './enrich/crunchbase.js';
 import { apolloReady } from './enrich/apollo.js';
 import { verifyPhones, twilioReady, needsLineType } from './enrich/phoneFinder.js';
 import { twilioUsage } from './enrich/twilioUsage.js';
-import { syncLeads, syncSpecialRequests, countLeads, supabaseReady } from './supabase.js';
+import { syncLeads, syncSpecialRequests, countLeads, supabaseReady, getHuntControl, setHuntControl } from './supabase.js';
 import { log } from './logger.js';
 
 /* Constant-time string compare to avoid leaking the password via timing. */
@@ -144,6 +144,29 @@ export function startServer() {
   app.post('/api/auto/toggle', (req, res) => {
     scheduler.setEnabled(Boolean(req.body?.enabled));
     res.json({ ok: true, ...scheduler.status() });
+  });
+
+  // ── Cloud hunt control (the month-long blitz kill switch + auto-stop date) ──
+  // These read/write the shared Supabase record the GitHub-Actions hunt obeys,
+  // so the buttons work even while this droplet is the thing that's down.
+  app.get('/api/hunt/control', async (_req, res) => {
+    if (!supabaseReady()) return res.json({ available: false });
+    try {
+      const c = await getHuntControl();
+      res.json({ available: true, ...c });
+    } catch (err) { res.status(502).json({ available: true, error: err.message }); }
+  });
+  app.post('/api/hunt/control', async (req, res) => {
+    if (!supabaseReady()) return res.status(400).json({ error: 'Supabase not configured.' });
+    try {
+      const enabled = Boolean(req.body?.enabled);
+      // stopAfter: 'YYYY-MM-DD' or null. Keep the existing date if not supplied.
+      let stopAfter = req.body?.stopAfter;
+      if (stopAfter === undefined) stopAfter = (await getHuntControl()).stopAfter;
+      if (stopAfter && !/^\d{4}-\d{2}-\d{2}$/.test(stopAfter)) return res.status(400).json({ error: 'stopAfter must be YYYY-MM-DD.' });
+      const out = await setHuntControl({ enabled, stopAfter: stopAfter || null });
+      res.json({ ok: true, ...out });
+    } catch (err) { res.status(502).json({ error: err.message }); }
   });
 
   // Re-score every stored lead in place (regenerate openers + full script).

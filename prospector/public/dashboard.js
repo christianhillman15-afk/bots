@@ -337,6 +337,7 @@ async function refresh() {
   $('#resultCount').textContent = `${leads.length} lead${leads.length === 1 ? '' : 's'}`;
   renderLeads(leads);
   renderAuto();
+  renderHuntControl();
 }
 
 function renderViewTabs(facets, allLeads = []) {
@@ -391,6 +392,45 @@ async function toggleAuto() {
     await fetch('/api/auto/toggle', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: turnOn }) });
     await renderAuto();
   } catch { btn.disabled = false; }
+}
+
+async function renderHuntControl() {
+  const el = $('#huntControl');
+  if (!el) return;
+  try {
+    const c = await fetch('/api/hunt/control').then((r) => r.json());
+    if (!c.available) { el.hidden = true; return; }
+    const dateStr = c.stopAfter
+      ? new Date(c.stopAfter + 'T00:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+      : null;
+    if (c.enabled) {
+      const until = dateStr ? ` — auto-stops after <b>${esc(dateStr)}</b>` : ' — running until you stop it';
+      el.innerHTML = `☁️ <b>Cloud hunt ON</b>${until}. <button id="huntStop" class="btn btn--ghost autobtn" style="margin-left:10px">⏹ Stop the hunt now</button>`;
+    } else {
+      const why = c.expired ? ` (reached its ${esc(dateStr || 'end')} date)` : '';
+      el.innerHTML = `⏹ <b>Cloud hunt OFF</b>${why} — not scanning, no Google cost. <button id="huntStart" class="btn btn--ghost autobtn" style="margin-left:10px">▶ Start the hunt</button>`;
+    }
+    el.hidden = false;
+    $('#huntStop')?.addEventListener('click', () => setHunt(false));
+    $('#huntStart')?.addEventListener('click', () => setHunt(true));
+  } catch { el.hidden = true; }
+}
+
+async function setHunt(enabled) {
+  if (!enabled && !confirm('Stop the month-long cloud hunt now? It stops finding new leads AND stops all Google Places cost immediately. You can start it again anytime with this button.')) return;
+  let stopAfter;
+  if (enabled) {
+    const ans = prompt('Auto-stop date (YYYY-MM-DD) — the hunt stops itself after this day. Leave blank to run until you stop it manually.', '');
+    if (ans === null) return; // cancelled
+    stopAfter = ans.trim() || null;
+  }
+  try {
+    await fetch('/api/hunt/control', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(enabled ? { enabled, stopAfter } : { enabled }),
+    });
+    await renderHuntControl();
+  } catch { alert('Could not reach the hunt control. Try again.'); }
 }
 
 function renderStats(s) {
