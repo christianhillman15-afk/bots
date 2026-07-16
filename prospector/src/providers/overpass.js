@@ -84,13 +84,28 @@ export async function searchOverpass({ category, metro, maxResults = 200 }) {
   const tags = OSM_TAGS[category.key];
   if (!tags) return []; // no OSM coverage for this category — skip (not an error)
 
+  // Need real coordinates. A custom city not in METROS carries null lat/lng,
+  // which would build an invalid `(around:R,null,null)` query that every
+  // endpoint rejects — skip cleanly instead of hammering the shared servers.
+  if (!Number.isFinite(metro.lat) || !Number.isFinite(metro.lng)) return [];
+
   const radiusM = Math.round((config.overpassRadiusMi || 25) * 1609.34);
   const query = buildQuery(tags, metro.lat, metro.lng, radiusM);
-  if (cache.has(query)) return cache.get(query).slice(0, maxResults);
+  if (cache.has(query)) return cloneRows(cache.get(query), maxResults);
 
   const result = await enqueue(() => runWithRetry(query));
-  cache.set(query, result);
-  return result.slice(0, maxResults);
+  // Cache ONLY a successful result. runWithRetry returns null when it gave up
+  // after exhausting retries — caching that would poison this query with an
+  // empty result for the whole process lifetime even after the service recovers.
+  if (result !== null) cache.set(query, result);
+  return cloneRows(result || [], maxResults);
+}
+
+/* Return shallow COPIES so callers (scan.js sets category/city/topCompetitor,
+ * discovery.merge sets sources/website) never mutate the shared cached objects,
+ * which would leak state across categories in one tick and across ticks. */
+function cloneRows(list, maxResults) {
+  return list.slice(0, maxResults).map((b) => ({ ...b }));
 }
 
 async function runWithRetry(query, attempt = 0) {
@@ -122,6 +137,6 @@ async function runWithRetry(query, attempt = 0) {
       return runWithRetry(query, attempt + 1);
     }
     log.warn(`overpass: giving up on this query after ${attempt + 1} tries (${err.message})`);
-    return [];
+    return null; // signal FAILURE (not an empty result) so we don't cache it
   }
 }

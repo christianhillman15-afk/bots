@@ -1,7 +1,9 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { config, isLive } from './config.js';
-import { searchBusinesses } from './providers/places.js';
+import { discover, activeSources } from './providers/discovery.js';
+import { placesCallsSince } from './providers/places.js';
+import { getPlacesUsage, addPlacesUsage } from './placesUsage.js';
 import * as demo from './providers/demo.js';
 import { auditBusiness } from './audit/audit.js';
 import { stripAudit } from './scan.js';
@@ -266,29 +268,31 @@ export async function runSpecialRequest({ srStore, request, onProgress = () => {
     const radius = Math.round((radiusMi || 20) * MILES_TO_M);
     const cats = request.criteria.categories.map(findCategory).filter(Boolean);
 
-    // 1) gather across categories, deduped
+    // 1) gather across categories, deduped. Discovery goes through the SAME
+    // orchestrator as the main scan, so it respects DISCOVERY_SOURCES: free by
+    // default (OpenStreetMap + government data), and Google Places only if it's
+    // been explicitly opted in — no surprise charges from a Special Request.
+    const [city, st] = String(label).split(',').map((s) => s.trim());
+    const metro = { city: city || 'Demo City', state: st || 'MN', lat, lng, metroPopulation: 500_000, population: 75_000 };
+    const sources = activeSources();
+    const usesPaidPlaces = sources.includes('google-places');
+    if (usesPaidPlaces) {
+      // Respect the daily Places cap on this path too (it previously bypassed it).
+      const budget = getPlacesUsage();
+      if (budget.remaining <= 0) {
+        log.warn(`special-request: daily Places cap reached (${budget.used}/${budget.cap}).`);
+      }
+      placesCallsSince(true); // reset the billable counter for this run
+    }
     const seen = new Set();
     const businesses = [];
     let ci = 0;
     for (const category of cats) {
       let found = [];
       try {
-        if (isLive()) {
-          found = await searchBusinesses({
-            searchTerm: category.searchTerm,
-            includedType: category.placesType,
-            lat, lng, radius,
-            cityLabel: label,
-            maxResults: 60,
-          });
-        } else {
-          const [city, st] = String(label).split(',').map((s) => s.trim());
-          found = demo.search({
-            category,
-            metro: { city: city || 'Demo City', state: st || 'MN', lat, lng, metroPopulation: 500_000, population: 75_000 },
-            maxResults: 40,
-          });
-        }
+        found = sources.length
+          ? await discover({ category, metro, maxResults: 60 })
+          : demo.search({ category, metro, maxResults: 40 });
       } catch (err) {
         log.warn(`special-request search failed (${category.label}): ${err.message}`);
       }
@@ -306,6 +310,8 @@ export async function runSpecialRequest({ srStore, request, onProgress = () => {
       ci++;
       setProgress({ phase: 'search', done: ci, total: cats.length, found: businesses.length });
     }
+    // Record any billable Places calls this run made against the daily cap.
+    if (usesPaidPlaces) addPlacesUsage(placesCallsSince(true));
 
     // 2) estimate revenue, keep the target band, rank by fit, cap
     const { revenueMin, revenueMax, targetCount } = request.criteria;

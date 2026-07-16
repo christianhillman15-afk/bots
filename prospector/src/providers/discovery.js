@@ -83,17 +83,32 @@ export async function discover({ category, metro, maxResults = 60, sources } = {
 
   const perSource = await Promise.all(jobs);
 
-  // De-dupe + merge across sources by lead identity.
+  // De-dupe + merge across sources. Primary key is lead identity (place id, or
+  // normalized name+address); a secondary phone index catches the same business
+  // whose address is formatted differently across sources (very common — OSM
+  // spells out "Street", license data abbreviates "St"), which name+address
+  // alone would miss.
   const byId = new Map();
+  const byPhone = new Map();
+  const phoneKey = (p) => { const d = String(p || '').replace(/\D/g, ''); return d.length >= 10 ? d.slice(-10) : ''; };
   for (const rows of perSource) {
     for (const b of rows) {
       if (!b?.name) continue;
       b.sources = b.sources || [b.source];
       const id = leadId(b);
-      const existing = byId.get(id);
-      if (existing) merge(existing, b);
-      else byId.set(id, b);
+      const pk = phoneKey(b.phone);
+      let existing = byId.get(id);
+      if (!existing && pk && byPhone.has(pk)) existing = byPhone.get(pk);
+      if (existing) {
+        merge(existing, b);
+      } else {
+        byId.set(id, b);
+        if (pk) byPhone.set(pk, b);
+      }
     }
   }
-  return Array.from(byId.values());
+  const merged = Array.from(byId.values());
+  // Cap to the per-city budget the caller asked for (each source was allowed up
+  // to maxResults, so the union can be several× that — don't audit 3× the ask).
+  return maxResults ? merged.slice(0, maxResults) : merged;
 }

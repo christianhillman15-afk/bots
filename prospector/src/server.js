@@ -3,6 +3,9 @@ import { timingSafeEqual, createHmac } from 'node:crypto';
 import { config, isLive } from './config.js';
 import { LeadStore } from './store.js';
 import { runScan } from './scan.js';
+import { activeSources } from './providers/discovery.js';
+import { placesCallsSince } from './providers/places.js';
+import { getPlacesUsage, addPlacesUsage } from './placesUsage.js';
 import { writeCsv } from './export.js';
 import { METROS, topMetros, findMetro } from './data/metros.js';
 import { CATEGORIES, findCategory, defaultCategories } from './data/categories.js';
@@ -468,6 +471,17 @@ export function startServer() {
   // Trigger a scan from the dashboard
   app.post('/api/scan', async (req, res) => {
     if (scanning) return res.status(409).json({ error: 'A scan is already running.' });
+    // If Google Places is an opted-in source, enforce + record the daily Places
+    // cap here too (this endpoint previously bypassed both). Free sources are
+    // unaffected.
+    const usesPaidPlaces = activeSources().includes('google-places');
+    if (usesPaidPlaces) {
+      const budget = getPlacesUsage();
+      if (budget.remaining <= 0) {
+        return res.status(429).json({ error: `Daily Google Places cap reached (${budget.used}/${budget.cap}). Try again tomorrow or scan with free sources.` });
+      }
+      placesCallsSince(true);
+    }
     scanning = true;
     try {
       const { cities, cityList, categories, max, minScore, full } = req.body || {};
@@ -485,6 +499,7 @@ export function startServer() {
     } catch (err) {
       res.status(500).json({ error: err.message });
     } finally {
+      if (usesPaidPlaces) addPlacesUsage(placesCallsSince(true));
       scanning = false;
     }
   });
