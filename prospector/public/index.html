@@ -139,19 +139,33 @@
       <div id="scanStatus" class="scanstatus" hidden></div>
     </section>
 
-    <!-- Filters -->
-    <section class="filters">
-      <input type="search" id="fSearch" placeholder="🔎 Look up anything — name, phone, email, website, owner, city…" />
-      <select id="fTier"><option value="">All tiers</option><option value="hot">🔥 Hot</option><option value="warm">🟠 Warm</option><option value="cool">🔵 Cool</option><option value="cold">⚪ Cold</option></select>
-      <select id="fPresence"><option value="">Any problem</option><option value="none">No website</option><option value="social_only">Social-only</option><option value="broken">Broken/parked</option><option value="weak">Weak site</option></select>
-      <select id="fState"><option value="">All states</option></select>
-      <select id="fCategory"><option value="">All categories</option></select>
-      <select id="fSort"><option value="score">Sort: Score</option><option value="opportunity">Sort: Opportunity $</option><option value="reviews">Sort: Reviews</option><option value="recent">Sort: Newest</option></select>
-      <span class="filters__count" id="resultCount"></span>
+    <!-- Filter bar: search + filters + view tabs, one cohesive panel -->
+    <section class="filterbar">
+      <div class="filterbar__row">
+        <div class="searchwrap">
+          <span class="searchwrap__icon">🔎</span>
+          <input type="search" id="fSearch" placeholder="Search anything — name, phone, email, website, owner, city…" autocomplete="off" />
+          <button id="fClear" class="searchwrap__clear" title="Clear search" hidden>✕</button>
+        </div>
+        <span class="filterbar__count" id="resultCount"></span>
+      </div>
+      <div class="filterbar__row filterbar__row--selects">
+        <select id="fTier"><option value="">All tiers</option><option value="hot">🔥 Hot</option><option value="warm">🟠 Warm</option><option value="cool">🔵 Cool</option><option value="cold">⚪ Cold</option></select>
+        <select id="fPresence">
+          <option value="">Any problem</option>
+          <option value="none">No website</option>
+          <option value="none_confirmed">No website · ✓ confirmed</option>
+          <option value="none_unconfirmed">No website · needs verify</option>
+          <option value="social_only">Social-only</option>
+          <option value="broken">Broken/parked</option>
+          <option value="weak">Weak site</option>
+        </select>
+        <select id="fState"><option value="">All states</option></select>
+        <select id="fCategory"><option value="">All categories</option></select>
+        <select id="fSort"><option value="score">Sort: Score</option><option value="opportunity">Sort: Opportunity $</option><option value="reviews">Sort: Reviews</option><option value="recent">Sort: Newest</option></select>
+      </div>
+      <div class="viewtabs" id="viewTabs"></div>
     </section>
-
-    <!-- Call-tracking tabs -->
-    <div class="viewtabs" id="viewTabs"></div>
 
     <!-- Leads -->
     <section class="leads" id="leads"></section>

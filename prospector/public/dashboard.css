@@ -184,12 +184,24 @@ select:focus, input:focus { border-color: var(--purple); }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* Filters */
-.filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; align-items: center; }
-.filters input[type=search] { flex: 1 1 240px; }
-.filters__count { color: var(--muted); font-size: 13px; margin-left: auto; }
+/* Filter bar — one cohesive panel: search, filters, and view tabs together */
+.filterbar { background: linear-gradient(180deg, var(--ink-3), var(--ink-2)); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 11px; }
+.filterbar__row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.filterbar__row--selects select { flex: 1 1 130px; min-width: 0; }
+.filterbar__count { color: var(--muted); font-size: 13px; margin-left: auto; white-space: nowrap; }
+.searchwrap { position: relative; flex: 1 1 300px; display: flex; align-items: center; }
+.searchwrap__icon { position: absolute; left: 13px; font-size: 14px; opacity: .7; pointer-events: none; }
+.searchwrap input[type=search] { width: 100%; padding: 11px 38px 11px 38px; font-size: 15px; border-radius: 12px;
+  background: var(--ink); border: 1px solid var(--line); transition: border-color .15s, box-shadow .15s; }
+.searchwrap input[type=search]:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(139,61,255,.15); }
+.searchwrap input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; } /* we have our own ✕ */
+.searchwrap__clear { position: absolute; right: 8px; width: 26px; height: 26px; border-radius: 50%; border: none;
+  background: var(--ink-3); color: var(--muted); cursor: pointer; font-size: 12px; line-height: 1; }
+.searchwrap__clear:hover { color: #fff; background: rgba(255,45,77,.25); }
 
 /* Call-tracking view tabs */
-.viewtabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.viewtabs { display: flex; gap: 8px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 11px; }
 .viewtab { background: var(--ink-2); border: 1px solid var(--line); color: var(--muted);
   border-radius: 999px; padding: 9px 16px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
 .viewtab:hover { color: var(--text); border-color: rgba(255,255,255,.2); }

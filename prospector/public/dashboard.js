@@ -312,17 +312,26 @@ function debounce(fn, ms) {
 
 function wireFilters() {
   const map = { fSearch: 'search', fTier: 'tier', fPresence: 'presence', fState: 'state', fCategory: 'category', fSort: 'sort' };
-  // The text search fires on every keystroke — debounce it so we don't refetch +
-  // re-render the whole list on each letter (that was the main source of jank).
-  const debouncedRefresh = debounce(refresh, 250);
+  // Search feels INSTANT: fire right away, then coalesce rapid keystrokes with a
+  // tiny 120ms trailing debounce (stale responses are discarded in refresh()).
+  const trailing = debounce(refresh, 120);
+  const instantSearch = () => { refresh(); trailing(); };
   for (const [id, key] of Object.entries(map)) {
     const el = $('#' + id);
-    const instant = el.tagName === 'SELECT'; // dropdowns fire once — no need to wait
+    if (!el) continue;
+    const isSelect = el.tagName === 'SELECT';
     el.addEventListener('input', () => {
       state[key] = el.value;
-      if (instant) refresh(); else debouncedRefresh();
+      if (id === 'fSearch') { $('#fClear').hidden = !el.value; instantSearch(); }
+      else if (isSelect) refresh();
+      else instantSearch();
     });
   }
+  $('#fClear')?.addEventListener('click', () => {
+    const s = $('#fSearch');
+    s.value = ''; state.search = ''; $('#fClear').hidden = true; s.focus();
+    refresh();
+  });
 }
 
 function qs() {
@@ -336,14 +345,17 @@ function qs() {
   return p.toString();
 }
 
+let _refreshSeq = 0;
 async function refresh() {
   // The server now does ALL filtering + paging (was client-side over the whole
   // 10k set — the reason it "took forever"). We fetch just one page.
+  const seq = ++_refreshSeq;
   const url = `/api/leads?${qs()}&view=${encodeURIComponent(state.view)}&limit=200`;
   const [stats, data] = await Promise.all([
     fetch('/api/stats').then((r) => r.json()),
     fetch(url).then((r) => r.json()),
   ]);
+  if (seq !== _refreshSeq) return; // a newer keystroke superseded this response
   renderStats(stats);
   // populate state filter from facets once
   if (data.facets?.state && $('#fState').options.length <= 1) {

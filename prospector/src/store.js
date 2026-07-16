@@ -167,7 +167,12 @@ export class LeadStore {
         (l) => l.business?.category === category || l.business?.categoryLabel === category
       );
     if (status) rows = rows.filter((l) => (l.status || 'new') === status);
-    if (presence) rows = rows.filter((l) => l.presence === presence);
+    // presence supports two special values on top of the raw classes:
+    //   none_confirmed   → "no website" that a web-search VERIFIED (safe to claim)
+    //   none_unconfirmed → "no website" still unverified (verify before claiming)
+    if (presence === 'none_confirmed') rows = rows.filter((l) => (l.presence === 'none' || l.presence === 'social_only') && l.business?.websiteVerified);
+    else if (presence === 'none_unconfirmed') rows = rows.filter((l) => (l.presence === 'none' || l.presence === 'social_only') && !l.business?.websiteVerified);
+    else if (presence) rows = rows.filter((l) => l.presence === presence);
     if (tier) rows = rows.filter((l) => l.score?.tier === tier);
     if (hasPhone) rows = rows.filter((l) => l.business?.phone);
     if (hasEmail) rows = rows.filter((l) => l.business?.email && l.business?.emailStatus !== 'risky');
