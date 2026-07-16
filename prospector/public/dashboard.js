@@ -369,15 +369,28 @@ async function renderAuto() {
   if (!el) return;
   try {
     const a = await fetch('/api/auto').then((r) => r.json());
-    if (!a.enabled) { el.hidden = true; return; }
-    const last = a.lastResult
-      ? `Last: +${a.lastResult.newLeads} new from ${esc(a.lastResult.metro)}.`
-      : 'Warming up…';
-    const next = a.nextRunAt ? ` Next run ~${new Date(a.nextRunAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.` : '';
-    const cleans = a.autoEnrich ? ' It auto-verifies websites &amp; finds emails too.' : '';
-    el.innerHTML = `🔄 <b>Auto-scan ON</b> — sweeping the US every ${a.intervalMin} min, now around <b>${esc(a.position?.metro || '')}</b>.${cleans} ${last}${next}`;
+    const btn = `<button id="autoToggle" class="btn btn--ghost autobtn" data-enabled="${a.enabled}" style="margin-left:10px">${a.enabled ? '⏸ Pause scanning' : '▶ Resume scanning'}</button>`;
+    if (a.enabled) {
+      const last = a.lastResult ? `Last: +${a.lastResult.newLeads} new from ${esc(a.lastResult.metro)}.` : 'Warming up…';
+      const next = a.nextRunAt ? ` Next ~${new Date(a.nextRunAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.` : '';
+      el.innerHTML = `🔄 <b>Auto-scan ON</b> — sweeping every ${a.intervalMin} min, around <b>${esc(a.position?.metro || '')}</b>. ${last}${next}${btn}`;
+    } else {
+      el.innerHTML = `⏸ <b>Auto-scan OFF</b> — not scanning, so no Places API calls and no cost.${btn}`;
+    }
     el.hidden = false;
+    $('#autoToggle')?.addEventListener('click', toggleAuto);
   } catch { el.hidden = true; }
+}
+
+async function toggleAuto() {
+  const btn = $('#autoToggle');
+  const turnOn = btn.dataset.enabled !== 'true';
+  if (!turnOn && !confirm('Pause the auto-scanner? It stops finding new leads AND stops any Google Places cost. You can resume anytime with this same button.')) return;
+  btn.disabled = true;
+  try {
+    await fetch('/api/auto/toggle', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: turnOn }) });
+    await renderAuto();
+  } catch { btn.disabled = false; }
 }
 
 function renderStats(s) {

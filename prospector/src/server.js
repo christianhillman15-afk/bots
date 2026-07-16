@@ -140,6 +140,12 @@ export function startServer() {
   // Auto-pilot status
   app.get('/api/auto', (_req, res) => res.json(scheduler.status()));
 
+  // Turn the auto-scanner on/off from the dashboard (persists across restarts).
+  app.post('/api/auto/toggle', (req, res) => {
+    scheduler.setEnabled(Boolean(req.body?.enabled));
+    res.json({ ok: true, ...scheduler.status() });
+  });
+
   // Re-score every stored lead in place (regenerate openers + full script).
   // No API calls; preserves status/notes/first-seen.
   app.post('/api/rescore', (_req, res) => {

@@ -19,12 +19,32 @@ import { log } from './logger.js';
  */
 export function createScheduler({ store, isBusy, setBusy }) {
   const cursorFile = resolve(config.dataDir, 'cursor.json');
+  const stateFile = resolve(config.dataDir, 'autoscan.json');
   let metroIndex = 0;
   let catIndex = 0;
   let lastRunAt = null;
   let lastResult = null;
   let lastTickMs = 0;
   let timer = null;
+  // Runtime on/off, controllable from the dashboard and persisted so it sticks
+  // across restarts. Defaults to the AUTO_SCAN env value, then the saved choice.
+  let enabled = config.autoScan;
+  try {
+    if (existsSync(stateFile)) {
+      const s = JSON.parse(readFileSync(stateFile, 'utf8'));
+      if (typeof s.enabled === 'boolean') enabled = s.enabled;
+    }
+  } catch { /* use env default */ }
+
+  function setEnabled(v) {
+    enabled = Boolean(v);
+    try {
+      if (!existsSync(config.dataDir)) mkdirSync(config.dataDir, { recursive: true });
+      writeFileSync(stateFile, JSON.stringify({ enabled }));
+    } catch { /* non-fatal */ }
+    log.ok(`Auto-scan turned ${enabled ? 'ON' : 'OFF'} from the dashboard.`);
+    return enabled;
+  }
 
   if (existsSync(cursorFile)) {
     try {
@@ -48,7 +68,7 @@ export function createScheduler({ store, isBusy, setBusy }) {
   }
 
   async function tick() {
-    if (!config.autoScan) return;
+    if (!enabled) return; // paused from the dashboard (or AUTO_SCAN off)
     if (isBusy()) {
       log.info('auto-scan: a scan is already running — skipping this tick');
       return;
@@ -114,10 +134,11 @@ export function createScheduler({ store, isBusy, setBusy }) {
   }
 
   function start() {
-    if (!config.autoScan) return;
+    // Always arm the timer so the dashboard toggle works at runtime; tick()
+    // itself no-ops while paused.
     const ms = Math.max(1, config.autoScanIntervalMin) * 60 * 1000;
     log.ok(
-      `Auto-scan ON · every ${config.autoScanIntervalMin} min · ${config.autoScanChunk} categories/tick`
+      `Auto-scan scheduler ready · every ${config.autoScanIntervalMin} min · ${config.autoScanChunk} categories/tick · currently ${enabled ? 'ON' : 'OFF'}`
     );
     setTimeout(tick, 20_000); // first run shortly after boot so you see it work
     timer = setInterval(tick, ms);
@@ -127,7 +148,7 @@ export function createScheduler({ store, isBusy, setBusy }) {
   function status() {
     const metro = METROS[metroIndex % METROS.length];
     return {
-      enabled: config.autoScan,
+      enabled,
       autoEnrich: config.autoEnrich,
       intervalMin: config.autoScanIntervalMin,
       chunk: config.autoScanChunk,
@@ -136,11 +157,11 @@ export function createScheduler({ store, isBusy, setBusy }) {
       lastRunAt,
       lastResult,
       nextRunAt:
-        config.autoScan && lastTickMs
+        enabled && lastTickMs
           ? new Date(lastTickMs + config.autoScanIntervalMin * 60 * 1000).toISOString()
           : null,
     };
   }
 
-  return { start, status, tick };
+  return { start, status, tick, setEnabled };
 }
