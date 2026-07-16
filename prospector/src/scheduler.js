@@ -7,6 +7,8 @@ import { runScan } from './scan.js';
 import { verifyMissingWebsites, enrichOwners, searchReady } from './enrich/websiteFinder.js';
 import { enrichEmails, verifyEmails } from './enrich/emailFinder.js';
 import { isStopped } from './killSwitch.js';
+import { getPlacesUsage, addPlacesUsage } from './placesUsage.js';
+import { placesCallsSince } from './providers/places.js';
 import { log } from './logger.js';
 
 /**
@@ -75,13 +77,22 @@ export function createScheduler({ store, isBusy, setBusy }) {
       log.info('auto-scan: a scan is already running — skipping this tick');
       return;
     }
+    // DAILY PLACES QUOTA GUARD: stop scanning once today's cap is hit so the
+    // always-on droplet can never bill past a safe daily rate. Skip WITHOUT
+    // advancing the cursor, so tomorrow resumes exactly where we left off.
+    const budget = getPlacesUsage();
+    if (budget.remaining <= 0) {
+      log.info(`auto-scan: daily Places cap reached (${budget.used}/${budget.cap}). Skipping until tomorrow — no charge.`);
+      return;
+    }
     const metro = METROS[metroIndex % METROS.length];
     const cats = CATEGORIES.slice(catIndex, catIndex + config.autoScanChunk);
     lastTickMs = Date.now();
     if (cats.length) {
       setBusy(true);
       try {
-        log.step(`auto-scan: ${metro.city}, ${metro.state} · ${cats.map((c) => c.label).join(', ')}`);
+        log.step(`auto-scan: ${metro.city}, ${metro.state} · ${cats.map((c) => c.label).join(', ')} · Places ${budget.used}/${budget.cap} today`);
+        placesCallsSince(true); // reset the billable-request counter for this tick
         const { stats } = await runScan({
           metros: [metro],
           categories: cats,
@@ -119,6 +130,9 @@ export function createScheduler({ store, isBusy, setBusy }) {
       } catch (err) {
         log.err(`auto-scan failed: ${err.message}`);
       } finally {
+        // Always account the billable Places requests this tick made — even if
+        // the scan/enrich threw partway — so the daily cap can never be undercounted.
+        addPlacesUsage(placesCallsSince(true));
         setBusy(false);
       }
     }
@@ -149,6 +163,7 @@ export function createScheduler({ store, isBusy, setBusy }) {
 
   function status() {
     const metro = METROS[metroIndex % METROS.length];
+    const places = getPlacesUsage();
     return {
       enabled,
       autoEnrich: config.autoEnrich,
@@ -156,6 +171,7 @@ export function createScheduler({ store, isBusy, setBusy }) {
       chunk: config.autoScanChunk,
       maxPerCity: config.autoScanMaxPerCity,
       position: { metro: `${metro.city}, ${metro.state}` },
+      placesToday: { used: places.used, cap: places.cap, remaining: places.remaining },
       lastRunAt,
       lastResult,
       nextRunAt:

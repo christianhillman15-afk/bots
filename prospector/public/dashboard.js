@@ -404,7 +404,10 @@ async function renderAuto() {
     if (a.enabled) {
       const last = a.lastResult ? `Last: +${a.lastResult.newLeads} new from ${esc(a.lastResult.metro)}.` : 'Warming up…';
       const next = a.nextRunAt ? ` Next ~${new Date(a.nextRunAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.` : '';
-      el.innerHTML = `🔄 <b>Auto-scan ON</b> — sweeping every ${a.intervalMin} min, around <b>${esc(a.position?.metro || '')}</b>. ${last}${next}${btn}`;
+      const pt = a.placesToday
+        ? ` <span class="quota-pill">Daily quota: ${a.placesToday.used}/${a.placesToday.cap} Google searches${a.placesToday.remaining <= 0 ? ' — capped, paused till tomorrow' : ''}</span>`
+        : '';
+      el.innerHTML = `🔄 <b>Auto-scan ON</b> — sweeping every ${a.intervalMin} min, around <b>${esc(a.position?.metro || '')}</b>. ${last}${next}${pt}${btn}`;
     } else {
       el.innerHTML = `⏸ <b>Auto-scan OFF</b> — not scanning, so no Places API calls and no cost.${btn}`;
     }

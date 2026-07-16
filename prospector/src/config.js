@@ -91,12 +91,14 @@ export const config = {
   // Secrets only, NEVER committed (the repo is public).
   supabaseUrl: process.env.SUPABASE_URL?.trim() || '',
   supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || '',
-  // HARD DAILY ceiling on Google Places search operations for the cloud hunt,
-  // so it stays inside the free tier and never bills. Persisted per-day in
-  // Supabase; once hit, the hunt stops scanning until tomorrow. The TRUE
-  // guarantee is a daily quota set on the Places API in Google Cloud itself
-  // (Google refuses calls past it) — this is the in-app companion to that.
-  // Default 30/day keeps the month near the ~1,000/mo free tier.
+  // HARD DAILY ceiling on Google Places search operations. Applies to BOTH the
+  // always-on droplet auto-scanner (persisted per-day in a local file) AND the
+  // cloud hunt (persisted per-day in Supabase). Once hit, scanning stops until
+  // tomorrow so an unattended server can never bill past a safe daily rate. The
+  // TRUE guarantee is still a daily quota set on the Places API in Google Cloud
+  // itself (Google refuses calls past it) — this is the in-app companion.
+  // Default 30/day (~900/mo) keeps usage inside the ~1,000/mo Enterprise free
+  // tier for the website/rating search SKU. Raise with PLACES_DAILY_CALL_CAP.
   placesDailyCap: Number(process.env.PLACES_DAILY_CALL_CAP) || 30,
 };
 
