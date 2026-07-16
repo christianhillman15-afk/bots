@@ -100,6 +100,23 @@ export const config = {
   // Default 30/day (~900/mo) keeps usage inside the ~1,000/mo Enterprise free
   // tier for the website/rating search SKU. Raise with PLACES_DAILY_CALL_CAP.
   placesDailyCap: Number(process.env.PLACES_DAILY_CALL_CAP) || 30,
+
+  // ── FREE discovery sources (OpenStreetMap + government open data) ────────────
+  // These find businesses at $0 cost, so the scanner can run all day without
+  // touching the paid Google Places SKU. Each is on by default and key-free.
+  //   overpass — OpenStreetMap Overpass API (nationwide, no key)
+  //   socrata  — Socrata open-data license datasets (no key; token raises limits)
+  //   arcgis   — ArcGIS FeatureServer license datasets (no key)
+  overpassEnabled: !/^(0|false|no|off)$/i.test(process.env.OVERPASS_ENABLED || ''),
+  overpassRadiusMi: Number(process.env.OVERPASS_RADIUS_MI) || 25,
+  socrataEnabled: !/^(0|false|no|off)$/i.test(process.env.SOCRATA_ENABLED || ''),
+  socrataAppToken: process.env.SOCRATA_APP_TOKEN?.trim() || '',
+  arcgisEnabled: !/^(0|false|no|off)$/i.test(process.env.ARCGIS_ENABLED || ''),
+  // Ordered list of discovery sources the scanner uses. Google Places is
+  // deliberately LEFT OUT of the default so the always-on scan is 100% free;
+  // add 'google-places' here (and set a key) to include it as a gap-filler.
+  discoverySources: (process.env.DISCOVERY_SOURCES || 'overpass,socrata,arcgis')
+    .split(',').map((s) => s.trim()).filter(Boolean),
 };
 
 /** True when we have a real Places key; otherwise we run on demo data. */

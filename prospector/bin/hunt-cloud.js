@@ -20,11 +20,15 @@ import { CATEGORIES } from '../src/data/categories.js';
 import { enrichEmails, verifyEmails } from '../src/enrich/emailFinder.js';
 import { supabaseReady, getScanCursor, setScanCursor, fetchExistingMeta, pushLeads, countLeads, getPlacesUsage, addPlacesUsage, getHuntControl, setHuntControl } from '../src/supabase.js';
 import { placesCallsSince } from '../src/providers/places.js';
+import { activeSources } from '../src/providers/discovery.js';
 import { log } from '../src/logger.js';
 
 async function main() {
   if (!supabaseReady()) { log.err('SUPABASE_URL + SUPABASE_SERVICE_KEY are required.'); process.exit(1); }
-  if (!isLive()) { log.err('GOOGLE_PLACES_API_KEY is required for a live hunt.'); process.exit(1); }
+  const sources = activeSources();
+  if (!sources.length) { log.err('No discovery sources active (need free sources enabled or a Google Places key).'); process.exit(1); }
+  const usesPaidPlaces = sources.includes('google-places');
+  log.info(`cloud-hunt: sources = ${sources.join(', ')}${usesPaidPlaces ? '' : ' (100% free — no Google cost)'}`);
 
   // KILL SWITCH + AUTO-STOP: before spending anything, honor the hunt-control
   // record. If it's been turned off from the dashboard, or the blitz end-date has
@@ -41,11 +45,11 @@ async function main() {
   }
   if (control.stopAfter) log.info(`cloud-hunt: running until ${control.stopAfter} (auto-stop), then it stops on its own.`);
 
-  // DAILY PLACES BUDGET GUARD: stop scanning once today's cap is reached so the
-  // hunt never bills past the free tier. (The hard guarantee is the daily quota
-  // set on the Places API in Google Cloud; this is the in-app companion.)
+  // DAILY PLACES BUDGET GUARD: only when Google Places is actually a source.
+  // With the default FREE sources the hunt costs nothing, so the cap never
+  // applies. (The hard guarantee for paid runs is still the Google Cloud quota.)
   const budget = await getPlacesUsage();
-  if (budget.remaining <= 0) {
+  if (usesPaidPlaces && budget.remaining <= 0) {
     log.warn(`cloud-hunt: daily Places cap reached (${budget.used}/${budget.cap}). Skipping scan until tomorrow. No charge.`);
     return;
   }
@@ -55,7 +59,7 @@ async function main() {
   const cats = CATEGORIES.slice(cur.catIndex, cur.catIndex + config.autoScanChunk);
   if (!cats.length) { log.warn('No categories at this cursor — resetting.'); await setScanCursor({ metroIndex: 0, catIndex: 0 }); return; }
 
-  log.step(`cloud-hunt: ${metro.city}, ${metro.state} · ${cats.map((c) => c.label).join(', ')} · Places ${budget.used}/${budget.cap} today`);
+  log.step(`cloud-hunt: ${metro.city}, ${metro.state} · ${cats.map((c) => c.label).join(', ')}${usesPaidPlaces ? ` · Places ${budget.used}/${budget.cap} today` : ' · free sources'}`);
 
   // Ephemeral in-memory store just for this chunk (file lives in the throwaway
   // Action runner; the real persistence is Supabase).

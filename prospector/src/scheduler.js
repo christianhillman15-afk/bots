@@ -9,6 +9,7 @@ import { enrichEmails, verifyEmails } from './enrich/emailFinder.js';
 import { isStopped } from './killSwitch.js';
 import { getPlacesUsage, addPlacesUsage } from './placesUsage.js';
 import { placesCallsSince } from './providers/places.js';
+import { activeSources } from './providers/discovery.js';
 import { log } from './logger.js';
 
 /**
@@ -77,11 +78,12 @@ export function createScheduler({ store, isBusy, setBusy }) {
       log.info('auto-scan: a scan is already running — skipping this tick');
       return;
     }
-    // DAILY PLACES QUOTA GUARD: stop scanning once today's cap is hit so the
-    // always-on droplet can never bill past a safe daily rate. Skip WITHOUT
-    // advancing the cursor, so tomorrow resumes exactly where we left off.
+    // DAILY PLACES QUOTA GUARD: only relevant when Google Places is an active
+    // discovery source (paid). With the default FREE sources (OpenStreetMap +
+    // government data) scanning costs nothing, so the cap must NOT block it.
+    const usesPaidPlaces = activeSources().includes('google-places');
     const budget = getPlacesUsage();
-    if (budget.remaining <= 0) {
+    if (usesPaidPlaces && budget.remaining <= 0) {
       log.info(`auto-scan: daily Places cap reached (${budget.used}/${budget.cap}). Skipping until tomorrow — no charge.`);
       return;
     }

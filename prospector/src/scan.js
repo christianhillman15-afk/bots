@@ -1,6 +1,7 @@
-import { getProvider } from './providers/index.js';
+import { discover, activeSources } from './providers/discovery.js';
+import { auditBusiness, isLead } from './audit/audit.js';
+import * as demo from './providers/demo.js';
 import { scoreLead } from './scoring/leadScore.js';
-import { isLead } from './audit/audit.js';
 import { LeadStore } from './store.js';
 import { config } from './config.js';
 import { mapLimit, leadId } from './util.js';
@@ -19,10 +20,19 @@ export async function runScan({
   store = new LeadStore(),
   onProgress = () => {},
 } = {}) {
-  const provider = getProvider();
+  // FREE discovery by default (OpenStreetMap + government open data). Falls back
+  // to the built-in demo dataset only when literally no source is configured.
+  const sources = activeSources();
+  const useFree = sources.length > 0;
+  const search = useFree
+    ? (opts) => discover(opts)
+    : (opts) => demo.search(opts);
+  const audit = useFree
+    ? (b) => auditBusiness(b)
+    : (b) => demo.audit(b);
   const stats = {
-    provider: provider.name,
-    live: provider.live,
+    provider: useFree ? sources.join('+') : 'demo',
+    live: useFree,
     searched: 0,
     found: 0,
     audited: 0,
@@ -42,7 +52,7 @@ export async function runScan({
       onProgress({ phase: 'search', metro, category, stats });
       let found = [];
       try {
-        found = await provider.search({ category, metro, maxResults: maxPerCity });
+        found = await search({ category, metro, maxResults: maxPerCity });
       } catch (err) {
         log.warn(`search failed (${category.label} in ${metro.city}): ${err.message}`);
         continue;
@@ -80,11 +90,11 @@ export async function runScan({
   // ── 2. Audit each business' web presence (bounded concurrency) ──────────
   let done = 0;
   const audited = await mapLimit(businesses, config.auditConcurrency, async (b) => {
-    const audit = await provider.audit(b);
+    const auditResult = await audit(b);
     stats.audited++;
     done++;
-    onProgress({ phase: 'audit', done, total: businesses.length, business: b, audit, stats });
-    return { business: b, audit };
+    onProgress({ phase: 'audit', done, total: businesses.length, business: b, audit: auditResult, stats });
+    return { business: b, audit: auditResult };
   });
 
   // ── 3. Score, filter to real leads, persist ─────────────────────────────
