@@ -69,6 +69,10 @@ async function boot() {
   await renderUsage();
   await renderDailyCount();
   await refresh();
+  // Status panels (auto-scan / cloud hunt / emergency stop) refresh on their own
+  // slow timer, decoupled from the lead list and the search box.
+  renderStatusPanels();
+  setInterval(renderStatusPanels, 30_000);
 }
 
 /** Show how many fresh emails / phones are queued for each daily list. */
@@ -285,11 +289,23 @@ async function rescoreAll() {
   }
 }
 
+function debounce(fn, ms) {
+  let t;
+  return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+}
+
 function wireFilters() {
   const map = { fSearch: 'search', fTier: 'tier', fPresence: 'presence', fState: 'state', fCategory: 'category', fSort: 'sort' };
+  // The text search fires on every keystroke — debounce it so we don't refetch +
+  // re-render the whole list on each letter (that was the main source of jank).
+  const debouncedRefresh = debounce(refresh, 250);
   for (const [id, key] of Object.entries(map)) {
     const el = $('#' + id);
-    el.addEventListener('input', () => { state[key] = el.value; refresh(); });
+    const instant = el.tagName === 'SELECT'; // dropdowns fire once — no need to wait
+    el.addEventListener('input', () => {
+      state[key] = el.value;
+      if (instant) refresh(); else debouncedRefresh();
+    });
   }
 }
 
@@ -336,6 +352,15 @@ async function refresh() {
   }
   $('#resultCount').textContent = `${leads.length} lead${leads.length === 1 ? '' : 's'}`;
   renderLeads(leads);
+  // NOTE: the auto/hunt/emergency status panels are intentionally NOT fetched
+  // here — refresh() runs on every search keystroke, and those calls (esp. the
+  // Supabase-backed hunt control) made typing glitchy. They refresh on their own
+  // slow timer (renderStatusPanels) and after their own button actions instead.
+}
+
+// Status panels poll on a slow, independent timer so they never stutter the
+// lead list or the search box.
+function renderStatusPanels() {
   renderAuto();
   renderHuntControl();
   renderEmergency();
@@ -478,10 +503,18 @@ function renderStats(s) {
   ).join('');
 }
 
+const RENDER_CAP = 300; // don't build more than this many cards at once (DOM perf)
 function renderLeads(leads) {
   const root = $('#leads');
   if (!leads.length) { root.innerHTML = '<div class="empty">No leads match. Run a scan or loosen the filters.</div>'; return; }
-  root.innerHTML = leads.map(leadCard).join('');
+  // Rendering all ~10k leads as DOM nodes made scrolling/typing glitchy. Cap the
+  // rendered set; the count above still shows the true total, and search/filters
+  // narrow to what you need. Sorting means the top (best) leads show first.
+  const shown = leads.slice(0, RENDER_CAP);
+  const note = leads.length > RENDER_CAP
+    ? `<div class="rendernote">Showing the top ${RENDER_CAP} of ${leads.length.toLocaleString()} — use search or filters to narrow.</div>`
+    : '';
+  root.innerHTML = note + shown.map(leadCard).join('');
   root.querySelectorAll('.lead__row').forEach((row) => {
     row.addEventListener('click', (e) => { if (e.target.closest('a,button,select')) return; row.parentElement.classList.toggle('open'); });
   });

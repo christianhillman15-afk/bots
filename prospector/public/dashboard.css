@@ -101,6 +101,8 @@ select:focus, input:focus { border-color: var(--purple); }
 .autostatus { margin-top: 12px; padding: 11px 14px; border-radius: var(--radius-sm); font-size: 13px;
   background: rgba(43,212,125,.08); border: 1px solid rgba(43,212,125,.35); color: #b8f3d4; }
 .autostatus b { color: #fff; }
+.rendernote { padding: 8px 12px; margin-bottom: 10px; border-radius: var(--radius-sm); font-size: 12.5px;
+  background: rgba(255,255,255,.05); border: 1px solid var(--line); color: var(--muted, #9aa); }
 .quota-pill { display: inline-block; margin: 0 4px; padding: 1px 8px; border-radius: 999px; font-size: 12px;
   background: rgba(255,255,255,.06); border: 1px solid var(--line); color: #cfe8d8; }
 .emergency { margin-top: 12px; }
