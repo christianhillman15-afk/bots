@@ -613,9 +613,9 @@ function renderLeads(leads) {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Failed');
       await navigator.clipboard.writeText(d.url).catch(() => {});
-      b.textContent = '✓ Live — link copied!';
+      b.textContent = '✓ Site live + customer created — link copied!';
       window.open(d.url, '_blank');
-      setTimeout(refresh, 1400);
+      setTimeout(refresh, 1600);
     } catch (err) {
       b.textContent = '✗ ' + (err.message || 'Failed');
       setTimeout(() => { b.textContent = orig; b.disabled = false; }, 3500);

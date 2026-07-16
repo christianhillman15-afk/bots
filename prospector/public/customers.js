@@ -41,11 +41,14 @@ function render(customers) {
 }
 
 function card(c) {
+  const demoLink = c.demoSiteUrl && /^https:\/\//.test(c.demoSiteUrl)
+    ? `<a href="${esc(c.demoSiteUrl)}" target="_blank" rel="noopener">🌐 Demo site we built ↗</a>` : '';
   const contact = [
     c.ownerName ? `👤 ${esc(c.ownerName)}` : '',
     c.phone ? `📞 ${esc(c.phone)}` : '',
     c.email ? `✉️ ${esc(c.email)}` : '',
     c.website ? `🌐 ${esc(c.website)}` : '',
+    demoLink,
   ].filter(Boolean).join(' &nbsp;·&nbsp; ');
   const loc = [c.city, c.state].filter(Boolean).join(', ');
   const payBtn = stripeReady && c.paymentStatus !== 'active_subscription' && c.paymentStatus !== 'paid'

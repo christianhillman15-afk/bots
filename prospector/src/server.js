@@ -293,7 +293,29 @@ export function startServer() {
       lead.business.demoSiteUrl = deployed.url;
       lead.business.demoSiteAt = new Date().toISOString();
       store.save();
-      res.json({ ok: true, url: deployed.url, adminUrl: deployed.adminUrl });
+      // AUTO-CREATE the customer record too (one click = site + customer). If a
+      // customer already exists for this lead, just attach the site URL to it —
+      // never a duplicate.
+      let customer = custStore.findByLead(lead.id);
+      if (customer) {
+        custStore.update(customer.id, { demoSiteUrl: deployed.url, activityNote: `Demo website generated: ${deployed.url}` });
+      } else {
+        const b = lead.business;
+        customer = custStore.create({
+          leadId: lead.id,
+          businessName: b.name || '',
+          ownerName: b.ownerName || '',
+          phone: b.phone || '',
+          email: b.email || '',
+          website: b.website || '',
+          address: b.address || '',
+          city: b.city || '',
+          state: b.state || '',
+          demoSiteUrl: deployed.url,
+          notes: `Auto-created when their demo website was generated (${deployed.url}).`,
+        });
+      }
+      res.json({ ok: true, url: deployed.url, adminUrl: deployed.adminUrl, customerId: customer.id });
     } catch (err) {
       res.status(502).json({ error: err.message });
     }

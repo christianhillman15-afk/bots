@@ -52,6 +52,11 @@ export class CustomerStore {
     return this.customers.find((c) => c.id === id) || null;
   }
 
+  /** The customer created from a given lead, if any (prevents duplicates). */
+  findByLead(leadId) {
+    return this.customers.find((c) => c.leadId === leadId) || null;
+  }
+
   /** Create a customer from a lead + deal details. Strips any stray card fields. */
   create(input = {}) {
     const now = new Date().toISOString();
@@ -68,6 +73,7 @@ export class CustomerStore {
       state: (input.state || '').trim(),
       plan: (input.plan || '').trim(),
       monthlyPrice: Number(input.monthlyPrice) || 0,
+      demoSiteUrl: (input.demoSiteUrl || '').trim(),
       status: 'pending', // pending | active | canceled
       // Payment is Stripe-only. Never store a PAN/CVV/expiry here.
       paymentStatus: 'not_collected', // not_collected | link_sent | paid | active_subscription
@@ -88,7 +94,7 @@ export class CustomerStore {
     const c = this.get(id);
     if (!c) return null;
     // Whitelist updatable fields — and hard-block any attempt to persist card data.
-    const allowed = ['ownerName', 'phone', 'email', 'website', 'address', 'city', 'state', 'plan', 'monthlyPrice', 'status', 'paymentStatus', 'stripeCustomerId', 'stripeSubscriptionId', 'notes'];
+    const allowed = ['ownerName', 'phone', 'email', 'website', 'address', 'city', 'state', 'plan', 'monthlyPrice', 'status', 'paymentStatus', 'stripeCustomerId', 'stripeSubscriptionId', 'notes', 'demoSiteUrl'];
     for (const k of allowed) {
       if (patch[k] !== undefined) c[k] = k === 'monthlyPrice' ? Number(patch[k]) || 0 : patch[k];
     }
