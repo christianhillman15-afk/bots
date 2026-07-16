@@ -16,7 +16,7 @@ import { verifyMissingWebsites, enrichOwners, searchReady, searchUsage, recheckL
 import { createScheduler } from './scheduler.js';
 import { SpecialRequestStore, runSpecialRequest, HOME_SERVICE_CATEGORIES } from './specialRequests.js';
 import { CustomerStore } from './customers.js';
-import { buildSiteHtml } from './siteTemplate.js';
+import { buildSiteHtml, fetchHeroDataUri } from './siteTemplate.js';
 import { deploySite, netlifyReady } from './netlify.js';
 import { googleSearchReady } from './enrich/googleSearch.js';
 import { crunchbaseReady } from './enrich/crunchbase.js';
@@ -286,6 +286,9 @@ export function startServer() {
     }
     try {
       const biz = { ...(lead.business || {}), id: lead.id };
+      // Embed the hero photo in the HTML so the page's key visual is guaranteed
+      // (hotlinks remain the fallback for the rest of the imagery).
+      biz._heroDataUri = await fetchHeroDataUri(biz.category);
       const html = buildSiteHtml(biz);
       const deployed = await deploySite({ files: { '/index.html': html } });
       // Persist the URL on the lead so the dashboard shows "View site" next time.
