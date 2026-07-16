@@ -66,10 +66,19 @@
     <a class="pagetab" href="/customers.html">Customers</a>
   </nav>
 
-  <main class="wrap">
-    <!-- Stats -->
-    <section class="stats" id="stats"></section>
+  <main class="wrap layout">
+    <!-- Left column: at-a-glance stats + live status (just to look at) -->
+    <aside class="sidecol">
+      <section class="stats" id="stats"></section>
+      <div class="sidecol__status">
+        <div id="autoStatus" class="autostatus" hidden></div>
+        <div id="huntControl" class="autostatus" hidden></div>
+        <div id="emergency" class="emergency"></div>
+      </div>
+    </aside>
 
+    <!-- Main column: the working area -->
+    <div class="maincol">
     <!-- Plain-English cheat sheet for talking to customers -->
     <details class="cheat">
       <summary>📖 What do these numbers mean? — customer cheat-sheet</summary>
@@ -128,9 +137,6 @@
         <button id="scanBtn" class="btn btn--red">⚡ Run Scan</button>
       </div>
       <div id="scanStatus" class="scanstatus" hidden></div>
-      <div id="autoStatus" class="autostatus" hidden></div>
-      <div id="huntControl" class="autostatus" hidden></div>
-      <div id="emergency" class="emergency"></div>
     </section>
 
     <!-- Filters -->
@@ -149,6 +155,7 @@
 
     <!-- Leads -->
     <section class="leads" id="leads"></section>
+    </div><!-- /.maincol -->
   </main>
 
   <!-- Create Customer modal -->
