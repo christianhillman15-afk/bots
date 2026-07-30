@@ -146,7 +146,14 @@ export function startServer() {
     }
     next();
   });
-  app.use(express.static(config.publicDir));
+  app.use(express.static(config.publicDir, {
+    // Always revalidate HTML and JS (cheap 304s via ETag) so a freshly deployed
+    // page shell can never run a stale cached script — a mismatch there can
+    // leave the page blank and unable to refresh. Other assets cache normally.
+    setHeaders(res, path) {
+      if (/\.(html|js)$/.test(path)) res.setHeader('Cache-Control', 'no-cache');
+    },
+  }));
 
   // Metadata for the UI (filters, categories, metros, mode)
   app.get('/api/meta', (_req, res) => {

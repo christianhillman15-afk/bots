@@ -271,11 +271,14 @@ async function createRequest() {
   load();
 }
 
-$('#srNewBtn').addEventListener('click', openModal);
-$('#nrCoverage').addEventListener('change', onCoverageChange);
-$('#nrCancel').addEventListener('click', closeModal);
-$('#nrCreate').addEventListener('click', createRequest);
-$('#srModal').addEventListener('click', (e) => { if (e.target.id === 'srModal') closeModal(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#srModal').hidden) closeModal(); });
+// Guard every binding with ?. so a single missing element (e.g. a stale cached
+// HTML after a deploy) can never throw and halt the script — that would leave
+// the page blank and unable to refresh. The page still loads and works.
+$('#srNewBtn')?.addEventListener('click', openModal);
+$('#nrCoverage')?.addEventListener('change', onCoverageChange);
+$('#nrCancel')?.addEventListener('click', closeModal);
+$('#nrCreate')?.addEventListener('click', createRequest);
+$('#srModal')?.addEventListener('click', (e) => { if (e.target.id === 'srModal') closeModal(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#srModal')?.hidden) closeModal(); });
 
-load();
+load().catch((err) => console.error('special-requests load failed:', err));
