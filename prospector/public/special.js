@@ -188,8 +188,15 @@ function closeDetail() {
 }
 
 async function runRequest(id) {
-  const res = await fetch('/api/special-requests/' + id + '/run', { method: 'POST' });
-  if (!res.ok) { alert((await res.json()).error || 'Could not start the run.'); return; }
+  let res = await fetch('/api/special-requests/' + id + '/run', { method: 'POST' });
+  // 423 = Emergency Stop is engaged. The Resume button lives on the Prospector
+  // tab, so offer to release + retry right here instead of dead-ending.
+  if (res.status === 423) {
+    if (!confirm('The Emergency Stop is ON, so scanning and paid API calls are blocked. Resume the prospector and run this request now?')) return;
+    await fetch('/api/emergency-stop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stopped: false }) });
+    res = await fetch('/api/special-requests/' + id + '/run', { method: 'POST' });
+  }
+  if (!res.ok) { alert((await res.json().catch(() => ({}))).error || 'Could not start the run.'); return; }
   openDetail(id); // re-render into running state + start polling
 }
 
