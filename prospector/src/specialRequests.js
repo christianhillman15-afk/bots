@@ -26,6 +26,50 @@ import { enrichApollo } from './enrich/apollo.js';
 
 const MILES_TO_M = 1609.34;
 
+/*
+ * Regions — named multi-metro coverage areas. A request can target a single
+ * point+radius (the classic path) OR a whole region, in which case the run
+ * sweeps every metro in the region across every chosen category. The Midwest
+ * region spans the 12 US Census "Midwest" states, ~2 metros per state so the
+ * coverage is even instead of Chicago-heavy.
+ */
+export const MIDWEST_METROS = [
+  { city: 'Chicago', state: 'IL', lat: 41.8781, lng: -87.6298 },
+  { city: 'Springfield', state: 'IL', lat: 39.7817, lng: -89.6501 },
+  { city: 'Indianapolis', state: 'IN', lat: 39.7684, lng: -86.1581 },
+  { city: 'Fort Wayne', state: 'IN', lat: 41.0793, lng: -85.1394 },
+  { city: 'Detroit', state: 'MI', lat: 42.3314, lng: -83.0458 },
+  { city: 'Grand Rapids', state: 'MI', lat: 42.9634, lng: -85.6681 },
+  { city: 'Columbus', state: 'OH', lat: 39.9612, lng: -82.9988 },
+  { city: 'Cleveland', state: 'OH', lat: 41.4993, lng: -81.6944 },
+  { city: 'Cincinnati', state: 'OH', lat: 39.1031, lng: -84.512 },
+  { city: 'Milwaukee', state: 'WI', lat: 43.0389, lng: -87.9065 },
+  { city: 'Madison', state: 'WI', lat: 43.0731, lng: -89.4012 },
+  { city: 'Minneapolis', state: 'MN', lat: 44.9778, lng: -93.265 },
+  { city: 'Saint Paul', state: 'MN', lat: 44.9537, lng: -93.09 },
+  { city: 'Des Moines', state: 'IA', lat: 41.5868, lng: -93.625 },
+  { city: 'Cedar Rapids', state: 'IA', lat: 41.9779, lng: -91.6656 },
+  { city: 'Kansas City', state: 'MO', lat: 39.0997, lng: -94.5786 },
+  { city: 'St. Louis', state: 'MO', lat: 38.627, lng: -90.1994 },
+  { city: 'Wichita', state: 'KS', lat: 37.6872, lng: -97.3301 },
+  { city: 'Overland Park', state: 'KS', lat: 38.9822, lng: -94.6708 },
+  { city: 'Omaha', state: 'NE', lat: 41.2565, lng: -95.9345 },
+  { city: 'Lincoln', state: 'NE', lat: 40.8136, lng: -96.7026 },
+  { city: 'Fargo', state: 'ND', lat: 46.8772, lng: -96.7898 },
+  { city: 'Bismarck', state: 'ND', lat: 46.8083, lng: -100.7837 },
+  { city: 'Sioux Falls', state: 'SD', lat: 43.5446, lng: -96.7311 },
+  { city: 'Rapid City', state: 'SD', lat: 44.0805, lng: -103.231 },
+];
+
+export const REGIONS = {
+  midwest: {
+    key: 'midwest',
+    label: 'Midwest US (12 states)',
+    states: ['IL', 'IN', 'MI', 'OH', 'WI', 'MN', 'IA', 'MO', 'KS', 'NE', 'ND', 'SD'],
+    metros: MIDWEST_METROS,
+  },
+};
+
 // Annual revenue is not exposed by Google. We estimate it from lifetime Google
 // reviews × the category's typical job value. The factor turns "lifetime
 // reviews" into a rough annual-jobs figure (only a few % of jobs get reviewed,
@@ -40,20 +84,22 @@ export function estimateRevenue(business) {
   return Math.round(ticket * reviews * REVENUE_PER_REVIEW);
 }
 
-/** The seeded first request: Christian's Woodbury, MN home-services pull. */
+/** The seeded first request: Christian's Midwest home-services pull. */
 function seedRequests() {
   return [
     {
-      id: 'sr-woodbury-home-services',
-      title: '100 Home-Services Leads — Woodbury, MN',
+      id: 'sr-midwest-home-services',
+      title: 'Home-Services Leads — Midwest US',
       description:
-        'Plumbing, HVAC, roofing & remodeling companies estimated at $1–5M/yr, within 20 miles of Woodbury, MN.',
+        'Plumbing, HVAC, roofing & remodeling companies estimated at $2–10M/yr across the entire Midwest — all 12 states (IL, IN, MI, OH, WI, MN, IA, MO, KS, NE, ND, SD).',
       criteria: {
-        location: { label: 'Woodbury, MN', lat: 44.9239, lng: -92.9594, radiusMi: 20 },
+        location: { label: REGIONS.midwest.label },
+        region: 'midwest',
+        metros: REGIONS.midwest.metros,
         categories: ['plumbing', 'hvac', 'roofing', 'remodeling'],
-        revenueMin: 1_000_000,
-        revenueMax: 5_000_000,
-        targetCount: 100,
+        revenueMin: 2_000_000,
+        revenueMax: 10_000_000,
+        targetCount: 500,
         fields: ['company', 'owner', 'email', 'phone', 'address', 'website'],
       },
       status: 'new', // new | running | done | error
@@ -82,7 +128,14 @@ export class SpecialRequestStore {
       log.warn(`special-requests load failed: ${err.message}`);
       this.requests = [];
     }
-    // Ensure the seeded Woodbury request always exists (adds it once).
+    // One-time migration: the original seed was a single-city Woodbury, MN pull.
+    // It's superseded by the Midwest region seed below. Drop the old one only if
+    // it was never run / never customized (no leads) so we never destroy work.
+    const old = this.requests.find((r) => r.id === 'sr-woodbury-home-services');
+    if (old && !(old.leads || []).length && old.status !== 'done') {
+      this.requests = this.requests.filter((r) => r.id !== old.id);
+    }
+    // Ensure the seeded Midwest request always exists (adds it once).
     for (const seed of seedRequests()) {
       if (!this.requests.some((r) => r.id === seed.id)) this.requests.push(seed);
     }
@@ -112,14 +165,19 @@ export class SpecialRequestStore {
     return this.requests.find((r) => r.id === id) || null;
   }
 
-  create({ title, description, location, categories, revenueMin, revenueMax, targetCount, fields }) {
+  create({ title, description, location, region, metros, categories, revenueMin, revenueMax, targetCount, fields }) {
     const id = 'sr-' + Math.random().toString(36).slice(2, 9); // eslint-disable-line -- id only, not crypto
+    // A named region preset (e.g. "midwest") expands into its metro list.
+    const preset = region && REGIONS[region];
+    const metroList = Array.isArray(metros) && metros.length ? metros : preset ? preset.metros : null;
     const req = {
       id,
       title: title || 'Untitled request',
       description: description || '',
       criteria: {
-        location,
+        location: location || (preset ? { label: preset.label } : undefined),
+        region: preset ? preset.key : undefined,
+        metros: metroList || undefined,
         categories: Array.isArray(categories) ? categories : [],
         revenueMin: Number(revenueMin) || 0,
         revenueMax: Number(revenueMax) || 0,
@@ -262,18 +320,30 @@ export async function runSpecialRequest({ srStore, request, onProgress = () => {
   try {
     request.status = 'running';
     request.leads = [];
-    setProgress({ phase: 'search', done: 0, total: request.criteria.categories.length, found: 0 });
 
-    const { lat, lng, label, radiusMi } = request.criteria.location;
-    const radius = Math.round((radiusMi || 20) * MILES_TO_M);
     const cats = request.criteria.categories.map(findCategory).filter(Boolean);
 
-    // 1) gather across categories, deduped. Discovery goes through the SAME
-    // orchestrator as the main scan, so it respects DISCOVERY_SOURCES: free by
-    // default (OpenStreetMap + government data), and Google Places only if it's
-    // been explicitly opted in — no surprise charges from a Special Request.
-    const [city, st] = String(label).split(',').map((s) => s.trim());
-    const metro = { city: city || 'Demo City', state: st || 'MN', lat, lng, metroPopulation: 500_000, population: 75_000 };
+    // Build the list of metros to sweep. A region request carries an explicit
+    // metro list; a classic request has a single point+radius, which becomes a
+    // one-metro sweep so the gather loop below is identical for both.
+    const loc = request.criteria.location || {};
+    let metros;
+    if (Array.isArray(request.criteria.metros) && request.criteria.metros.length) {
+      metros = request.criteria.metros.map((m) => ({
+        city: m.city, state: m.state, lat: m.lat, lng: m.lng,
+        metroPopulation: m.metroPopulation || 750_000, population: m.population || 100_000,
+      }));
+    } else {
+      const [city, st] = String(loc.label || '').split(',').map((s) => s.trim());
+      metros = [{ city: city || 'Demo City', state: st || 'MN', lat: loc.lat, lng: loc.lng, metroPopulation: 500_000, population: 75_000 }];
+    }
+
+    setProgress({ phase: 'search', done: 0, total: metros.length * cats.length, found: 0 });
+
+    // 1) gather across metros × categories, deduped. Discovery goes through the
+    // SAME orchestrator as the main scan, so it respects DISCOVERY_SOURCES: free
+    // by default (OpenStreetMap + government data), and Google Places only if
+    // it's been explicitly opted in — no surprise charges from a Special Request.
     const sources = activeSources();
     const usesPaidPlaces = sources.includes('google-places');
     if (usesPaidPlaces) {
@@ -286,29 +356,32 @@ export async function runSpecialRequest({ srStore, request, onProgress = () => {
     }
     const seen = new Set();
     const businesses = [];
-    let ci = 0;
-    for (const category of cats) {
-      let found = [];
-      try {
-        found = sources.length
-          ? await discover({ category, metro, maxResults: 60 })
-          : demo.search({ category, metro, maxResults: 40 });
-      } catch (err) {
-        log.warn(`special-request search failed (${category.label}): ${err.message}`);
+    let step = 0;
+    const totalSteps = metros.length * cats.length;
+    for (const metro of metros) {
+      for (const category of cats) {
+        let found = [];
+        try {
+          found = sources.length
+            ? await discover({ category, metro, maxResults: 60 })
+            : demo.search({ category, metro, maxResults: 40 });
+        } catch (err) {
+          log.warn(`special-request search failed (${category.label} @ ${metro.city}, ${metro.state}): ${err.message}`);
+        }
+        for (const b of found) {
+          b.category = category.key;
+          b.categoryLabel = category.label;
+          b.avgTicketUsd = category.avgTicketUsd;
+          b.affordability = category.affordability;
+          b.tier = category.tier;
+          const id = leadId(b);
+          if (seen.has(id)) continue;
+          seen.add(id);
+          businesses.push(b);
+        }
+        step++;
+        setProgress({ phase: 'search', done: step, total: totalSteps, found: businesses.length });
       }
-      for (const b of found) {
-        b.category = category.key;
-        b.categoryLabel = category.label;
-        b.avgTicketUsd = category.avgTicketUsd;
-        b.affordability = category.affordability;
-        b.tier = category.tier;
-        const id = leadId(b);
-        if (seen.has(id)) continue;
-        seen.add(id);
-        businesses.push(b);
-      }
-      ci++;
-      setProgress({ phase: 'search', done: ci, total: cats.length, found: businesses.length });
     }
     // Record any billable Places calls this run made against the daily cap.
     if (usesPaidPlaces) addPlacesUsage(placesCallsSince(true));
@@ -345,6 +418,7 @@ export async function runSpecialRequest({ srStore, request, onProgress = () => {
     request.status = 'done';
     request.runStats = {
       searchedCategories: cats.length,
+      searchedMetros: metros.length,
       gathered: businesses.length,
       inBand: inBand.length,
       kept: picked.length,

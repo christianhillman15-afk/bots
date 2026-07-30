@@ -53,17 +53,25 @@
     <div class="sr-modal__box">
       <h2>New special request</h2>
       <label>Title <input id="nrTitle" type="text" placeholder="e.g. 100 HVAC leads — Austin, TX" /></label>
-      <label>Location name <input id="nrLoc" type="text" placeholder="Woodbury, MN" /></label>
-      <div class="sr-row">
-        <label>Latitude <input id="nrLat" type="number" step="any" placeholder="44.9239" /></label>
-        <label>Longitude <input id="nrLng" type="number" step="any" placeholder="-92.9594" /></label>
-        <label>Radius (mi) <input id="nrRadius" type="number" value="20" /></label>
+      <label>Coverage
+        <select id="nrCoverage">
+          <option value="point">Single city (point + radius)</option>
+        </select>
+      </label>
+      <div id="nrPointFields">
+        <label>Location name <input id="nrLoc" type="text" placeholder="Woodbury, MN" /></label>
+        <div class="sr-row">
+          <label>Latitude <input id="nrLat" type="number" step="any" placeholder="44.9239" /></label>
+          <label>Longitude <input id="nrLng" type="number" step="any" placeholder="-92.9594" /></label>
+          <label>Radius (mi) <input id="nrRadius" type="number" value="20" /></label>
+        </div>
       </div>
+      <p id="nrRegionNote" class="muted sr-hint" hidden></p>
       <label>Categories</label>
       <div id="nrCats" class="sr-cats"></div>
       <div class="sr-row">
-        <label>Revenue min ($) <input id="nrRevMin" type="number" value="1000000" /></label>
-        <label>Revenue max ($) <input id="nrRevMax" type="number" value="5000000" /></label>
+        <label>Revenue min ($) <input id="nrRevMin" type="number" value="2000000" /></label>
+        <label>Revenue max ($) <input id="nrRevMax" type="number" value="10000000" /></label>
         <label>How many <input id="nrCount" type="number" value="100" /></label>
       </div>
       <p class="muted sr-hint">Tip: paste the town's coordinates from Google Maps (right-click → the lat/long at top).</p>

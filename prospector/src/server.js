@@ -14,7 +14,7 @@ import { scoreLead } from './scoring/leadScore.js';
 import { enrichEmails, verifyEmails } from './enrich/emailFinder.js';
 import { verifyMissingWebsites, enrichOwners, searchReady, searchUsage, recheckLead } from './enrich/websiteFinder.js';
 import { createScheduler } from './scheduler.js';
-import { SpecialRequestStore, runSpecialRequest, HOME_SERVICE_CATEGORIES } from './specialRequests.js';
+import { SpecialRequestStore, runSpecialRequest, HOME_SERVICE_CATEGORIES, REGIONS } from './specialRequests.js';
 import { CustomerStore } from './customers.js';
 import { buildSiteHtml, fetchHeroDataUri } from './siteTemplate.js';
 import { deploySite, netlifyReady } from './netlify.js';
@@ -488,6 +488,8 @@ export function startServer() {
     res.json({
       requests: srStore.list(),
       homeServiceCategories: HOME_SERVICE_CATEGORIES,
+      // Named multi-metro coverage presets (e.g. Midwest) for the new-request form.
+      regions: Object.values(REGIONS).map((r) => ({ key: r.key, label: r.label, states: r.states, metroCount: r.metros.length })),
       live: isLive(),
       // Which enrichment sources are connected, so the tab can show status
       // instead of the user guessing whether a key took effect.
@@ -511,8 +513,10 @@ export function startServer() {
 
   app.post('/api/special-requests', (req, res) => {
     const b = req.body || {};
-    if (!b.location || b.location.lat == null || b.location.lng == null) {
-      return res.status(400).json({ error: 'A location with lat/lng is required.' });
+    const hasMetros = (Array.isArray(b.metros) && b.metros.length) || (b.region && REGIONS[b.region]);
+    const hasPoint = b.location && b.location.lat != null && b.location.lng != null;
+    if (!hasMetros && !hasPoint) {
+      return res.status(400).json({ error: 'Provide a location with lat/lng, or a region/metros list.' });
     }
     const r = srStore.create(b);
     res.json({ ok: true, request: r });

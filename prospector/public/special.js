@@ -19,7 +19,7 @@ const safeUrl = (u) => {
   return '';
 };
 
-let META = { homeServiceCategories: [], live: false };
+let META = { homeServiceCategories: [], live: false, regions: [] };
 let pollTimer = null;
 
 async function load() {
@@ -30,6 +30,21 @@ async function load() {
   renderSources(data.sources);
   renderCards(data.requests || []);
   buildCategoryChecks(data.homeServiceCategories || []);
+  buildCoverageOptions(data.regions || []);
+}
+
+/* Coverage dropdown: a single point, or any named multi-metro region preset. */
+function buildCoverageOptions(regions) {
+  const sel = $('#nrCoverage');
+  if (!sel) return;
+  // keep the first "Single city" option, append region presets
+  sel.querySelectorAll('option[data-region]').forEach((o) => o.remove());
+  for (const r of regions) {
+    const o = document.createElement('option');
+    o.value = 'region:' + r.key; o.dataset.region = r.key;
+    o.textContent = `${r.label} · ${r.metroCount} metros`;
+    sel.appendChild(o);
+  }
 }
 
 /* Show which enrichment sources are connected so a new key is visibly "on"
@@ -65,7 +80,7 @@ function renderCards(requests) {
       <h3>${esc(r.title)}</h3>
       <div class="sr-card__desc">${esc(r.description || '')}</div>
       <div class="sr-card__meta">
-        <span class="sr-chip">📍 ${esc(c.location?.label || '—')}</span>
+        <span class="sr-chip">${c.metros?.length ? '🗺' : '📍'} ${esc(c.location?.label || '—')}${c.metros?.length ? ` · ${c.metros.length} metros` : ''}</span>
         <span class="sr-chip">🎯 ${esc(cats || '—')}</span>
         <span class="sr-chip">💰 ${esc(rev)}</span>
         <span class="sr-chip">#${esc(String(c.targetCount || '—'))}</span>
@@ -106,6 +121,7 @@ async function openDetail(id) {
     <div><b>${r.runStats.withOwner}</b>with owner</div>
     <div><b>${r.runStats.withWebsite}</b>with website</div>
     <div><b>${r.runStats.gathered}</b>scanned</div>
+    ${r.runStats.searchedMetros ? `<div><b>${r.runStats.searchedMetros}</b>metros swept</div>` : ''}
   </div>` : '';
 
   const prog = isRunning ? `<div class="sr-progress"><span class="spinner"></span>
@@ -118,7 +134,7 @@ async function openDetail(id) {
         <h2>${esc(r.title)}</h2>
         <div class="muted">${esc(r.description || '')}</div>
         <div class="sr-card__meta" style="margin-top:10px">
-          <span class="sr-chip">📍 ${esc(c.location?.label || '—')} · ${esc(String(c.location?.radiusMi || '?'))} mi</span>
+          <span class="sr-chip">${c.metros?.length ? '🗺' : '📍'} ${esc(c.location?.label || '—')} · ${c.metros?.length ? esc(String(c.metros.length)) + ' metros' : esc(String(c.location?.radiusMi || '?')) + ' mi'}</span>
           <span class="sr-chip">🎯 ${esc((c.categories || []).join(', '))}</span>
           <span class="sr-chip">💰 ${usdShort(c.revenueMin)}–${usdShort(c.revenueMax)} (est.)</span>
           <span class="sr-chip">Target ${esc(String(c.targetCount))}</span>
@@ -210,20 +226,45 @@ function buildCategoryChecks(cats) {
 function openModal() { $('#srModal').hidden = false; }
 function closeModal() { $('#srModal').hidden = true; }
 
+/** Selected region key ("" when the coverage is a single point). */
+function selectedRegion() {
+  const v = $('#nrCoverage')?.value || 'point';
+  return v.startsWith('region:') ? v.slice('region:'.length) : '';
+}
+
+/** Show/hide the lat/lng/radius fields depending on coverage mode. */
+function onCoverageChange() {
+  const region = selectedRegion();
+  $('#nrPointFields').hidden = !!region;
+  const note = $('#nrRegionNote');
+  const meta = (META.regions || []).find((r) => r.key === region);
+  if (region && meta) {
+    note.hidden = false;
+    note.textContent = `Sweeps all ${meta.metroCount} metros across ${meta.states.length} states (${meta.states.join(', ')}). A live run makes many searches — the daily Places cap still applies.`;
+  } else {
+    note.hidden = true;
+  }
+}
+
 async function createRequest() {
   const cats = [...document.querySelectorAll('#nrCats input:checked')].map((i) => i.value);
-  const lat = parseFloat($('#nrLat').value), lng = parseFloat($('#nrLng').value);
-  if (Number.isNaN(lat) || Number.isNaN(lng)) { alert('Enter the location latitude and longitude (from Google Maps).'); return; }
   if (!cats.length) { alert('Pick at least one category.'); return; }
+  const region = selectedRegion();
   const body = {
     title: $('#nrTitle').value || 'Untitled request',
     description: '',
-    location: { label: $('#nrLoc').value || 'Custom area', lat, lng, radiusMi: Number($('#nrRadius').value) || 20 },
     categories: cats,
     revenueMin: Number($('#nrRevMin').value) || 0,
     revenueMax: Number($('#nrRevMax').value) || 0,
     targetCount: Number($('#nrCount').value) || 50,
   };
+  if (region) {
+    body.region = region; // engine expands this into the region's metro list
+  } else {
+    const lat = parseFloat($('#nrLat').value), lng = parseFloat($('#nrLng').value);
+    if (Number.isNaN(lat) || Number.isNaN(lng)) { alert('Enter the location latitude and longitude (from Google Maps).'); return; }
+    body.location = { label: $('#nrLoc').value || 'Custom area', lat, lng, radiusMi: Number($('#nrRadius').value) || 20 };
+  }
   const res = await fetch('/api/special-requests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   if (!res.ok) { alert((await res.json()).error || 'Could not create the request.'); return; }
   closeModal();
@@ -231,6 +272,7 @@ async function createRequest() {
 }
 
 $('#srNewBtn').addEventListener('click', openModal);
+$('#nrCoverage').addEventListener('change', onCoverageChange);
 $('#nrCancel').addEventListener('click', closeModal);
 $('#nrCreate').addEventListener('click', createRequest);
 $('#srModal').addEventListener('click', (e) => { if (e.target.id === 'srModal') closeModal(); });
