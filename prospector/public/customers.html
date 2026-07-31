@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Launch Media Prospector — Customers</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand__mark">⚡</span>
+      <span class="brand__text">Launch <span class="accent">Media</span></span>
+      <span class="brand__sub">Customers</span>
+    </div>
+    <div class="topbar__right">
+      <span id="payBadge" class="badge badge--demo">Stripe not connected</span>
+    </div>
+  </header>
+
+  <nav class="pagetabs">
+    <a class="pagetab" href="/">Prospector</a>
+    <a class="pagetab" href="/bigguys.html">Big Guys</a>
+    <a class="pagetab" href="/special.html">Special Requests</a>
+    <a class="pagetab" href="/agencies.html">Agencies</a>
+    <a class="pagetab pagetab--active" href="/customers.html">Customers</a>
+  </nav>
+
+  <main class="wrap">
+    <section class="stats" id="custStats"></section>
+
+    <!-- Filter bar (same look as the Prospector tab) -->
+    <section class="filterbar">
+      <div class="filterbar__row">
+        <div class="searchwrap">
+          <span class="searchwrap__icon">🔎</span>
+          <input type="search" id="cSearch" placeholder="Search customers — name, owner, phone, email, city…" autocomplete="off" />
+          <button id="cClear" class="searchwrap__clear" title="Clear search" hidden>✕</button>
+        </div>
+        <span class="filterbar__count" id="cCount"></span>
+      </div>
+      <div class="filterbar__row filterbar__row--selects">
+        <select id="cStatus">
+          <option value="">All statuses</option>
+          <option value="pending">🟡 Pending</option>
+          <option value="active">🟢 Active</option>
+          <option value="canceled">⚪ Canceled</option>
+        </select>
+        <select id="cPay">
+          <option value="">Any payment state</option>
+          <option value="not_collected">💳 Not collected</option>
+          <option value="link_sent">📨 Link sent</option>
+          <option value="paid">✅ Paid</option>
+          <option value="active_subscription">🔁 Subscription</option>
+        </select>
+        <select id="cHasSite">
+          <option value="">Site or not</option>
+          <option value="yes">🌐 Has demo site</option>
+          <option value="no">No demo site</option>
+        </select>
+        <select id="cSort">
+          <option value="newest">Sort: Newest</option>
+          <option value="name">Sort: Name A–Z</option>
+          <option value="price">Sort: Price high→low</option>
+          <option value="status">Sort: Status</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="leads" id="custList"></section>
+  </main>
+
+  <script src="customers.js"></script>
+</body>
+</html>

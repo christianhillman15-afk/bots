@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Launch Media Prospector — Lead Finder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand__mark">⚡</span>
+      <span class="brand__text">Launch <span class="accent">Media</span></span>
+      <span class="brand__sub">Prospector</span>
+    </div>
+    <div class="topbar__right">
+      <span id="modeBadge" class="badge badge--demo">DEMO</span>
+      <span id="usageBadge" class="usage" hidden></span>
+      <button id="menuBtn" class="menu-btn" aria-label="Open menu" title="Tools &amp; exports">☰</button>
+    </div>
+  </header>
+
+  <!-- Slide-out tools drawer (opened by the ☰ button) -->
+  <div class="drawer" id="drawer" hidden>
+    <div class="drawer__panel">
+      <div class="drawer__head">
+        <b>Tools &amp; exports</b>
+        <button id="drawerClose" class="menu-btn" aria-label="Close menu">✕</button>
+      </div>
+
+      <div class="drawer__group">
+        <span class="drawer__label">Enrich leads</span>
+        <button id="verifyBtn" class="drawer__btn" title="Google-search the 'no website' leads to confirm or find their real site (needs Gemini key)">🔍 Verify websites</button>
+        <button id="ownersBtn" class="drawer__btn" title="Find owner names to personalize outreach (needs Gemini key)">👤 Find owners</button>
+        <button id="emailBtn" class="drawer__btn" title="Scrape lead sites AND web-search for emails on no-website leads (uses search budget)">✉️ Find emails</button>
+        <button id="phoneBtn" class="drawer__btn" title="Line-type phone numbers via Twilio (mobile vs landline). Needs Twilio keys.">📱 Verify phones</button>
+        <button id="rescoreBtn" class="drawer__btn" title="Regenerate openers + full script on every lead">↻ Refresh scripts</button>
+      </div>
+
+      <div class="drawer__group">
+        <span class="drawer__label">Export &amp; send lists</span>
+        <button id="dailyEmailBtn" class="drawer__btn" title="Download only NEW emails you haven't saved yet. Marks them saved so no email repeats.">📤 Daily Emails</button>
+        <button id="dailyPhoneBtn" class="drawer__btn" title="Download only NEW phone numbers you haven't saved yet. Marks them saved so no number repeats.">📞 Daily Phones</button>
+        <button id="instantlyBtn" class="drawer__btn" title="Download ALL emailable leads (use if your sending service removes duplicates itself)">→ Full email CSV</button>
+        <button id="exportBtn" class="drawer__btn" title="Download all filtered leads as a spreadsheet">⬇ Export CSV</button>
+      </div>
+
+      <div class="drawer__group">
+        <span class="drawer__label">Your data</span>
+        <button id="backupBtn" class="drawer__btn" title="Download a full backup of ALL your leads to your computer.">💾 Backup</button>
+        <button id="supabaseBtn" class="drawer__btn" title="Push every lead to your Supabase cloud database (durable). Needs Supabase keys.">☁️ Sync to Supabase</button>
+        <button id="restoreBtn" class="drawer__btn" title="Restore your leads from a backup file (adds any you're missing; never deletes)">⤒ Restore</button>
+        <input type="file" id="restoreFile" accept="application/json,.json" hidden />
+      </div>
+    </div>
+  </div>
+
+  <!-- Page tabs -->
+  <nav class="pagetabs">
+    <a class="pagetab pagetab--active" href="/">Prospector</a>
+    <a class="pagetab" href="/bigguys.html">Big Guys</a>
+    <a class="pagetab" href="/special.html">Special Requests</a>
+    <a class="pagetab" href="/agencies.html">Agencies</a>
+    <a class="pagetab" href="/customers.html">Customers</a>
+  </nav>
+
+  <main class="wrap layout">
+    <!-- Left column: at-a-glance stats + live status (just to look at) -->
+    <aside class="sidecol">
+      <section class="stats" id="stats"></section>
+      <div class="sidecol__status">
+        <div id="autoStatus" class="autostatus" hidden></div>
+        <div id="huntControl" class="autostatus" hidden></div>
+        <div id="emergency" class="emergency"></div>
+      </div>
+    </aside>
+
+    <!-- Main column: the working area -->
+    <div class="maincol">
+    <!-- Plain-English cheat sheet for talking to customers -->
+    <details class="cheat">
+      <summary>📖 What do these numbers mean? — customer cheat-sheet</summary>
+      <div class="cheat__body">
+        <div class="cheat__item"><b>💵 Est. lost / month (the green number)</b>
+          <p>A rough estimate of how much money this business is probably leaving on the table every month because of their website problem. It's an educated guess, not an exact bill: we look at how busy their area is and how many reviews they have to estimate how many customers search for them online, assume a broken/missing site loses about <b>1 in 4</b> of those, and multiply by what one job is worth.
+          <br><i>Say it like:</i> "Based on your reviews and how busy your area is, you're probably losing somewhere <b>around $X/month</b> in jobs to competitors who just show up better online — that's what I'd love to help you fix."</p></div>
+        <div class="cheat__item"><b>🔢 Score (0–100) + 🔥/🟠/🔵/⚪ tier</b>
+          <p>How good a fit they are for Launch Media. Higher = better lead. 🔥 <b>Hot = call first</b>, ⚪ Cold = lowest priority. It blends three things → their web problem, whether they can afford you, and how busy their market is.</p></div>
+        <div class="cheat__item"><b>🏷️ Problem tag</b>
+          <p><b>No website</b> = nothing online but a Google listing · <b>Social-only</b> = their "site" is just a Facebook/Instagram page (they don't own it, can't rank) · <b>Broken</b> = web address doesn't work / blank / "for sale" page · <b>Weak site</b> = it loads but it's slow, not mobile-friendly, or insecure.</p></div>
+        <div class="cheat__item"><b>⭐ Reviews / rating</b>
+          <p>Our stand-in for "are they making real money." Lots of reviews = busy, established, can afford you. It's why a shop with 300 reviews and no website is a goldmine.</p></div>
+        <div class="cheat__item"><b>📊 Score breakdown (Problem · Affordability · Market)</b>
+          <p>The three ingredients of the score, each 0–100. <b>Problem</b> = how bad their web situation is · <b>Affordability</b> = how likely they can pay · <b>Market</b> = how big/busy their city is.</p></div>
+        <div class="cheat__item"><b>🩺 Site health · 💼 typical job value · 🔎 online leads/mo</b>
+          <p><b>Site health</b> = a 0–100 grade of their current site (0 = none/broken). <b>Typical job value</b> = what one customer is worth in their trade (a roof ≈ $12k) — great for "one extra job covers months with us." <b>Online leads/mo</b> = rough guess at how many people search for that service in their area monthly.</p></div>
+        <div class="cheat__item"><b>📈 The 4 stat cards up top</b>
+          <p><b>Total leads</b> = businesses found with a web problem · <b>Hot leads</b> = the best ones to call first · <b>No real website</b> = how many have nothing or only social · <b>Est. monthly opportunity</b> = the total $ across your whole list (your pipeline size, not one customer).</p></div>
+        <p class="cheat__note">⚠️ The $ figures are honest <b>estimates</b> to start a conversation — always say "around" or "roughly," never promise an exact number.</p>
+      </div>
+    </details>
+
+    <!-- Scan panel -->
+    <section class="panel scanpanel">
+      <div class="scanpanel__head">
+        <h2>Run a hunt</h2>
+        <p id="scanHint" class="muted">Find businesses with no/bad websites that can afford Launch Media.</p>
+      </div>
+      <div class="scanpanel__controls">
+        <label>Metros
+          <select id="scanCities">
+            <option value="3">Top 3</option>
+            <option value="5" selected>Top 5</option>
+            <option value="10">Top 10</option>
+            <option value="25">Top 25</option>
+            <option value="50">Top 50</option>
+            <option value="75">All 75</option>
+          </select>
+        </label>
+        <label>Categories
+          <select id="scanCats">
+            <option value="default" selected>Best fits (premium + high)</option>
+            <option value="all">All categories</option>
+          </select>
+        </label>
+        <label>Per city
+          <select id="scanMax">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="40">40</option>
+            <option value="60">60</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="scanFull" /> Deep audit (PageSpeed)</label>
+        <button id="scanBtn" class="btn btn--red">⚡ Run Scan</button>
+      </div>
+      <div id="scanStatus" class="scanstatus" hidden></div>
+    </section>
+
+    <!-- Filter bar: search + filters + view tabs, one cohesive panel -->
+    <section class="filterbar">
+      <div class="filterbar__row">
+        <div class="searchwrap">
+          <span class="searchwrap__icon">🔎</span>
+          <input type="search" id="fSearch" placeholder="Search anything — name, phone, email, website, owner, city…" autocomplete="off" />
+          <button id="fClear" class="searchwrap__clear" title="Clear search" hidden>✕</button>
+        </div>
+        <span class="filterbar__count" id="resultCount"></span>
+      </div>
+      <div class="filterbar__row filterbar__row--selects">
+        <select id="fTier"><option value="">All tiers</option><option value="hot">🔥 Hot</option><option value="warm">🟠 Warm</option><option value="cool">🔵 Cool</option><option value="cold">⚪ Cold</option></select>
+        <select id="fPresence">
+          <option value="">Any problem</option>
+          <option value="none">No website</option>
+          <option value="none_confirmed">No website · ✓ confirmed</option>
+          <option value="none_unconfirmed">No website · needs verify</option>
+          <option value="social_only">Social-only</option>
+          <option value="broken">Broken/parked</option>
+          <option value="weak">Weak site</option>
+        </select>
+        <select id="fState"><option value="">All states</option></select>
+        <select id="fCategory"><option value="">All categories</option></select>
+        <select id="fRep"><option value="">All reps</option></select>
+        <select id="fSort"><option value="score">Sort: Score</option><option value="opportunity">Sort: Opportunity $</option><option value="reviews">Sort: Reviews</option><option value="recent">Sort: Newest</option></select>
+      </div>
+      <div class="viewtabs" id="viewTabs"></div>
+    </section>
+
+    <!-- Leads -->
+    <section class="leads" id="leads"></section>
+    </div><!-- /.maincol -->
+  </main>
+
+  <!-- Create Customer modal -->
+  <div class="cust-modal" id="custModal" hidden>
+    <div class="cust-modal__box">
+      <div class="cust-modal__head">
+        <h3>✅ Create Customer</h3>
+        <button class="cust-modal__x" id="custClose" title="Close">✕</button>
+      </div>
+      <p class="muted" style="margin:0 0 14px">They said yes — save their info and set up the deal. The card is collected securely through Stripe (never stored here).</p>
+      <div class="cust-form">
+        <label class="cust-field cust-field--wide">Business name<input id="cBusiness" type="text" /></label>
+        <label class="cust-field">Owner / contact<input id="cOwner" type="text" /></label>
+        <label class="cust-field">Phone<input id="cPhone" type="tel" /></label>
+        <label class="cust-field">Email<input id="cEmail" type="email" /></label>
+        <label class="cust-field">Website<input id="cWebsite" type="text" /></label>
+        <label class="cust-field cust-field--wide">Address<input id="cAddress" type="text" /></label>
+        <label class="cust-field">City<input id="cCity" type="text" /></label>
+        <label class="cust-field">State<input id="cState" type="text" /></label>
+        <label class="cust-field">Plan<input id="cPlan" type="text" placeholder="e.g. Website + Marketing" /></label>
+        <label class="cust-field">Monthly price ($)<input id="cPrice" type="number" min="0" step="50" placeholder="750" /></label>
+        <label class="cust-field cust-field--wide">Notes<textarea id="cNotes" rows="2" placeholder="What they agreed to, follow-up, etc."></textarea></label>
+      </div>
+
+      <div class="cust-pay">
+        <div class="cust-pay__title">💳 Payment</div>
+        <div id="custPayBody" class="cust-pay__body"></div>
+      </div>
+
+      <div class="cust-modal__foot">
+        <span id="custMsg" class="cust-msg"></span>
+        <button class="btn btn--ghost" id="custCancel">Cancel</button>
+        <button class="btn btn--red" id="custSave">Save customer</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footnote muted">
+    Surfaces publicly available business info for legitimate B2B prospecting. You are responsible for CAN-SPAM / TCPA / state compliance and honoring opt-outs. Not legal advice. See README.
+    <br><a href="#" id="resetDailyLink" title="Clears the 'already sent' marks so every emailable lead can be pulled into a Daily CSV again">↺ Reset the daily send-list</a>
+  </div>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>

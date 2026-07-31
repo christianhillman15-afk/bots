@@ -1,0 +1,47 @@
+# Reference deploy settings for the Oxsome Prospector dashboard on Render.
+#
+# Render's Blueprint auto-detection only reads render.yaml from the repo's
+# DEFAULT branch at the repo ROOT, so on this feature branch the most reliable
+# path is to create the service MANUALLY using these exact values:
+#   New → Web Service → connect repo
+#   Branch        = claude/website-audit-service-0xwokm
+#   Root Directory = prospector
+#   Build Command  = npm install
+#   Start Command  = npm start
+#   Health Check   = /healthz
+#   Env vars       = GOOGLE_PLACES_API_KEY, DASHBOARD_PASSWORD (+ the rest below)
+# (If you later merge this to your default branch, New → Blueprint will pick it up.)
+#
+# Notes:
+#   - rootDir points Render at the prospector/ subfolder.
+#   - The disk keeps your leads + statuses across restarts/redeploys.
+#     A disk requires a paid instance type. To run on the FREE tier instead,
+#     delete the `disk:` block and the DATA_DIR var (leads then reset on restart —
+#     just re-scan, or export CSVs to keep them).
+services:
+  - type: web
+    name: surge-prospector
+    runtime: node
+    rootDir: prospector
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: GOOGLE_PLACES_API_KEY
+        sync: false # prompted at deploy; not stored in git
+      - key: PAGESPEED_API_KEY
+        sync: false
+      - key: DASHBOARD_PASSWORD
+        sync: false # prompted at deploy; choose a strong one
+      - key: DASHBOARD_USER
+        value: surge
+      - key: AUDIT_MODE
+        value: light
+      - key: DATA_DIR
+        value: /data
+    disk:
+      name: prospector-data
+      mountPath: /data
+      sizeGB: 1

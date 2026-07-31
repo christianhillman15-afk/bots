@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Launch Media Prospector — Big Guys</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="dashboard.css" />
+  <link rel="stylesheet" href="bigguys.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand__mark">⚡</span>
+      <span class="brand__text">Launch <span class="accent">Media</span></span>
+      <span class="brand__sub">Big Guys</span>
+    </div>
+    <div class="topbar__right">
+      <div class="toolbar">
+        <button id="bgExportBtn" class="btn btn--ghost" title="Download the Big Guys list as a spreadsheet">⬇ Export CSV</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Page tabs -->
+  <nav class="pagetabs">
+    <a class="pagetab" href="/">Prospector</a>
+    <a class="pagetab pagetab--active" href="/bigguys.html">Big Guys</a>
+    <a class="pagetab" href="/special.html">Special Requests</a>
+    <a class="pagetab" href="/agencies.html">Agencies</a>
+  </nav>
+
+  <main class="wrap">
+    <!-- The target profile: who we're hunting -->
+    <section class="panel target" id="targetProfile"></section>
+
+    <!-- Stats -->
+    <section class="stats" id="bgStats"></section>
+
+    <!-- Filters -->
+    <section class="filters">
+      <input type="search" id="bgSearch" placeholder="Search company, owner, city, field…" />
+      <select id="bgStatus">
+        <option value="">Any web problem</option>
+        <option value="none">🚩 No website</option>
+        <option value="social_only">Social-only</option>
+        <option value="broken">Broken/parked</option>
+        <option value="template">Cheap template</option>
+        <option value="outdated">Outdated site</option>
+      </select>
+      <select id="bgState"><option value="">All states</option></select>
+      <select id="bgField"><option value="">All fields</option></select>
+      <span class="filters__count" id="bgCount"></span>
+    </section>
+
+    <!-- Prospects -->
+    <section class="leads" id="bgList"></section>
+  </main>
+
+  <div class="footnote muted">
+    Hand-researched, high-value prospects modeled on the Jonathan Keith / DK3 profile. Contact info comes from public sources
+    (their own sites, license boards, directories) — double-check before outreach. You are responsible for CAN-SPAM / TCPA compliance.
+  </div>
+
+  <script src="bigguys-data.js"></script>
+  <script src="bigguys.js"></script>
+</body>
+</html>

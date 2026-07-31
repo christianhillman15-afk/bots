@@ -1,0 +1,79 @@
+/* Special Requests tab — request cards, detail table, new-request modal.
+   Reuses dashboard.css design tokens (--ink-*, --line, --muted, --text). */
+
+.sr-intro { max-width: 760px; margin: 4px auto 14px; text-align: center; font-size: 15px; }
+
+/* connected-sources status row */
+.sr-sources { text-align: center; font-size: 12.5px; margin: 0 auto 20px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; }
+.sr-src { padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--ink-2); color: var(--muted); cursor: default; }
+.sr-src--on { color: #79e0a8; border-color: rgba(46,204,113,.35); }
+
+/* ── request cards ─────────────────────────────────────────────────────── */
+.sr-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.sr-card {
+  background: var(--ink-2); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px;
+  cursor: pointer; transition: border-color .15s, transform .1s;
+}
+.sr-card:hover { border-color: rgba(255,45,77,.5); transform: translateY(-2px); }
+.sr-card h3 { margin: 0 0 6px; font-size: 18px; letter-spacing: -.01em; }
+.sr-card__desc { color: var(--muted); font-size: 13px; line-height: 1.5; margin-bottom: 14px; }
+.sr-card__meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.sr-chip {
+  font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px;
+  background: var(--ink-3); border: 1px solid var(--line); color: var(--muted);
+}
+.sr-card__foot { display: flex; align-items: center; justify-content: space-between; }
+.sr-status { font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px; }
+.sr-status--new { background: rgba(255,255,255,.06); color: var(--muted); }
+.sr-status--running { background: rgba(139,61,255,.18); color: #c9a9ff; }
+.sr-status--done { background: rgba(46,204,113,.16); color: #79e0a8; }
+.sr-status--error { background: rgba(255,93,118,.16); color: #ff8ea0; }
+.sr-card__count { font-weight: 800; font-size: 22px; }
+.sr-card__count small { font-weight: 500; font-size: 12px; color: var(--muted); }
+
+/* ── detail view ───────────────────────────────────────────────────────── */
+.sr-detail__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+.sr-back { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 0; margin-bottom: 10px; }
+.sr-back:hover { color: var(--text); }
+.sr-detail h2 { margin: 0 0 4px; font-size: 24px; }
+.sr-detail__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.sr-runstats { display: flex; flex-wrap: wrap; gap: 18px; margin: 8px 0 18px; }
+.sr-runstats div { font-size: 13px; color: var(--muted); }
+.sr-runstats b { color: var(--text); font-size: 18px; display: block; }
+.sr-progress {
+  background: var(--ink-2); border: 1px solid var(--line); border-radius: 12px;
+  padding: 14px 18px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px;
+}
+.sr-progress .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.2); border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.sr-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+table.sr-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 900px; }
+.sr-table th, .sr-table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.sr-table th { background: var(--ink-2); font-weight: 700; color: var(--muted); position: sticky; top: 0; white-space: nowrap; }
+.sr-table tr:hover td { background: rgba(255,255,255,.02); }
+.sr-table a { color: #7db3ff; text-decoration: none; }
+.sr-table a:hover { text-decoration: underline; }
+.sr-rev { font-weight: 700; color: #79e0a8; white-space: nowrap; }
+.sr-badge { font-size: 11px; padding: 1px 7px; border-radius: 999px; margin-left: 4px; }
+.sr-badge--cb { background: rgba(80,120,255,.18); color: #a9c2ff; }
+.sr-badge--edgar { background: rgba(255,180,60,.16); color: #ffd08a; }
+.sr-empty { padding: 40px; text-align: center; color: var(--muted); }
+
+/* ── new-request modal ─────────────────────────────────────────────────── */
+/* A `display:` here overrides the HTML `hidden` attribute, so an element with
+   both stays visible. Restore `hidden` (= display:none) explicitly for the
+   elements we toggle that also set a display. */
+.sr-modal[hidden], .sr-cards[hidden] { display: none; }
+.sr-modal { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
+.sr-modal__box { background: var(--ink-2); border: 1px solid var(--line); border-radius: 18px; padding: 26px 28px; width: 560px; max-width: 100%; max-height: 90vh; overflow-y: auto; }
+.sr-modal__box h2 { margin: 0 0 16px; font-size: 20px; }
+.sr-modal__box label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin: 12px 0 4px; }
+.sr-modal__box input { width: 100%; box-sizing: border-box; background: var(--ink-3); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; color: var(--text); font-size: 14px; outline: none; }
+.sr-modal__box input:focus { border-color: #8b3dff; }
+.sr-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.sr-cats { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.sr-cats label { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 6px 12px; background: var(--ink-3); border: 1px solid var(--line); border-radius: 999px; cursor: pointer; color: var(--text); font-weight: 500; }
+.sr-cats input { width: auto; }
+.sr-hint { font-size: 12px; margin: 14px 0 0; }
+.sr-modal__actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }

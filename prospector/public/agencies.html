@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Launch Media Prospector — Agencies</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="dashboard.css" />
+  <link rel="stylesheet" href="special.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand__mark">⚡</span>
+      <span class="brand__text">Launch <span class="accent">Media</span></span>
+      <span class="brand__sub">Agencies</span>
+    </div>
+    <div class="topbar__right">
+      <span id="srMode" class="badge badge--demo">DEMO</span>
+      <div class="toolbar">
+        <button id="srNewBtn" class="btn btn--red" title="Define a new agency list">＋ New agency list</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Page tabs -->
+  <nav class="pagetabs">
+    <a class="pagetab" href="/">Prospector</a>
+    <a class="pagetab" href="/bigguys.html">Big Guys</a>
+    <a class="pagetab" href="/special.html">Special Requests</a>
+    <a class="pagetab pagetab--active" href="/agencies.html">Agencies</a>
+  </nav>
+
+  <main class="wrap">
+    <p class="sr-intro muted">
+      Lead pulls for <b>advertising &amp; media-buying agencies</b> — owner name, agency address, direct phone, email &amp; website.
+      Each list keeps its own results so you can organize, re-run, and export separately.
+    </p>
+
+    <!-- Which enrichment sources are connected (filled by special.js) -->
+    <div id="srSources" class="sr-sources muted"></div>
+
+    <!-- List of agency "profiles" -->
+    <section id="srCards" class="sr-cards"></section>
+
+    <!-- Detail view for one list -->
+    <section id="srDetail" class="sr-detail" hidden></section>
+  </main>
+
+  <!-- New-agency-list modal -->
+  <div id="srModal" class="sr-modal" hidden>
+    <div class="sr-modal__box">
+      <h2>New agency list</h2>
+      <label>Title <input id="nrTitle" type="text" placeholder="e.g. Media-buying agency owners — USA" /></label>
+      <label>Coverage
+        <select id="nrCoverage">
+          <option value="point">Single city (point + radius)</option>
+        </select>
+      </label>
+      <div id="nrPointFields">
+        <label>Location name <input id="nrLoc" type="text" placeholder="New York, NY" /></label>
+        <div class="sr-row">
+          <label>Latitude <input id="nrLat" type="number" step="any" placeholder="40.7128" /></label>
+          <label>Longitude <input id="nrLng" type="number" step="any" placeholder="-74.006" /></label>
+          <label>Radius (mi) <input id="nrRadius" type="number" value="25" /></label>
+        </div>
+      </div>
+      <p id="nrRegionNote" class="muted sr-hint" hidden></p>
+      <label>Agency types</label>
+      <div id="nrCats" class="sr-cats"></div>
+      <div class="sr-row">
+        <label>Revenue min ($) <input id="nrRevMin" type="number" value="0" /></label>
+        <label>Revenue max ($) <input id="nrRevMax" type="number" value="0" /></label>
+        <label>How many <input id="nrCount" type="number" value="500" /></label>
+      </div>
+      <p class="muted sr-hint">Leave revenue min &amp; max at <b>0</b> to pull agencies of every size (recommended — Google reviews don't reflect agency revenue).</p>
+      <div class="sr-modal__actions">
+        <button id="nrCancel" class="btn btn--ghost">Cancel</button>
+        <button id="nrCreate" class="btn btn--red">Create list</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footnote muted">
+    Owner names + direct contacts come from Apollo when connected; agency address, phone &amp; website come from Google Places.
+    Verify before outreach — you're responsible for CAN-SPAM / TCPA compliance.
+  </div>
+
+  <script>window.SR_KIND = 'agency';</script>
+  <script src="special.js"></script>
+</body>
+</html>
