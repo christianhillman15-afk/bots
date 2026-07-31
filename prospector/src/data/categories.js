@@ -71,11 +71,24 @@ export const CATEGORIES = [
   { key: 'insurance-agency', label: 'Insurance Agency', searchTerm: 'insurance agency', placesType: 'insurance_agency', tier: 'high', avgTicketUsd: 1500, affordability: 0.8, note: 'Recurring policies = high LTV. Independent agents often neglect local SEO.' },
   { key: 'financial-advisor', label: 'Financial Advisor', searchTerm: 'financial advisor', placesType: '', tier: 'high', avgTicketUsd: 3000, affordability: 0.85, note: 'AUM/retainer income, high LTV. Compliance-cautious but budget-rich.' },
   { key: 'gym', label: 'Gym / Fitness Studio', searchTerm: 'gym and fitness center', placesType: 'gym', tier: 'mid', avgTicketUsd: 600, affordability: 0.7, note: 'Memberships = recurring LTV. Boutique studios compete on brand + local SEO.' },
+
+  // ── Agency vertical ─────────────────────────────────────────────────────
+  // Advertising / media-buying agencies. `vertical: 'agency'` keeps these OUT
+  // of the main contractor prospector + auto-scan (see defaultCategories); they
+  // power the dedicated Agencies tab instead. avgTicket is a nominal retainer —
+  // the Agencies tab pulls all sizes (no revenue filter), so it only feeds the
+  // rough opportunity number, not any banding.
+  { key: 'media-buying', label: 'Media Buying Agency', searchTerm: 'media buying agency', placesType: '', tier: 'high', avgTicketUsd: 6000, affordability: 0.9, vertical: 'agency', note: 'Buys paid media for clients; commission/retainer income. The core target for this list.' },
+  { key: 'advertising-agency', label: 'Advertising Agency', searchTerm: 'advertising agency', placesType: 'advertising_agency', tier: 'high', avgTicketUsd: 6000, affordability: 0.9, vertical: 'agency', note: 'Full-service ad shops; many run media buying in-house.' },
+  { key: 'marketing-agency', label: 'Marketing Agency', searchTerm: 'marketing agency', placesType: '', tier: 'high', avgTicketUsd: 5000, affordability: 0.9, vertical: 'agency', note: 'Retainer-based marketing services; broad net for agency owners.' },
+  { key: 'digital-marketing-agency', label: 'Digital Marketing Agency', searchTerm: 'digital marketing agency', placesType: '', tier: 'high', avgTicketUsd: 5000, affordability: 0.9, vertical: 'agency', note: 'PPC/social/SEO shops; frequently offer paid-media buying.' },
 ];
 
 export const findCategory = (key) =>
   CATEGORIES.find((c) => c.key === key || c.searchTerm.toLowerCase() === key.toLowerCase());
 
-/** Default category set: the strongest Launch Media fits (premium + high tiers). */
+/** Default category set: the strongest Launch Media fits (premium + high tiers).
+ * Excludes vertical-tagged categories (e.g. agencies) so the main contractor
+ * prospector and auto-scan never pull them — those have their own tab. */
 export const defaultCategories = () =>
-  CATEGORIES.filter((c) => c.tier === 'premium' || c.tier === 'high');
+  CATEGORIES.filter((c) => (c.tier === 'premium' || c.tier === 'high') && !c.vertical);

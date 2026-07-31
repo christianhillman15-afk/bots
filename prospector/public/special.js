@@ -19,17 +19,22 @@ const safeUrl = (u) => {
   return '';
 };
 
-let META = { homeServiceCategories: [], live: false, regions: [] };
+let META = { homeServiceCategories: [], agencyCategories: [], live: false, regions: [] };
 let pollTimer = null;
 
+// This page powers two tabs sharing the same engine: Special Requests ('special')
+// and Agencies ('agency'). The HTML sets window.SR_KIND; each tab shows only its
+// own lists and offers the right category set / defaults.
+const KIND = (typeof window !== 'undefined' && window.SR_KIND) || 'special';
+
 async function load() {
-  const data = await fetch('/api/special-requests').then((r) => r.json());
+  const data = await fetch('/api/special-requests?kind=' + KIND).then((r) => r.json());
   META = data;
   $('#srMode').textContent = data.live ? 'LIVE' : 'DEMO';
   $('#srMode').className = 'badge ' + (data.live ? 'badge--live' : 'badge--demo');
   renderSources(data.sources);
   renderCards(data.requests || []);
-  buildCategoryChecks(data.homeServiceCategories || []);
+  buildCategoryChecks(KIND === 'agency' ? (data.agencyCategories || []) : (data.homeServiceCategories || []));
   buildCoverageOptions(data.regions || []);
 }
 
@@ -68,7 +73,9 @@ function renderSources(s) {
 function renderCards(requests) {
   const el = $('#srCards');
   if (!requests.length) {
-    el.innerHTML = '<div class="sr-empty">No special requests yet. Click “＋ New request” to create one.</div>';
+    el.innerHTML = KIND === 'agency'
+      ? '<div class="sr-empty">No agency lists yet. Click “＋ New agency list” to create one.</div>'
+      : '<div class="sr-empty">No special requests yet. Click “＋ New request” to create one.</div>';
     return;
   }
   el.innerHTML = requests.map((r) => {
@@ -225,7 +232,9 @@ async function deleteRequest(id, title) {
 
 /* ── new-request modal ─────────────────────────────────────────────────── */
 function buildCategoryChecks(cats) {
-  const preset = new Set(['plumbing', 'hvac', 'roofing', 'remodeling']);
+  const preset = KIND === 'agency'
+    ? new Set(['media-buying', 'advertising-agency'])
+    : new Set(['plumbing', 'hvac', 'roofing', 'remodeling']);
   $('#nrCats').innerHTML = cats.map((c) =>
     `<label><input type="checkbox" value="${esc(c.key)}" ${preset.has(c.key) ? 'checked' : ''}/> ${esc(c.label)}</label>`
   ).join('');
@@ -258,6 +267,7 @@ async function createRequest() {
   if (!cats.length) { alert('Pick at least one category.'); return; }
   const region = selectedRegion();
   const body = {
+    kind: KIND,
     title: $('#nrTitle').value || 'Untitled request',
     description: '',
     categories: cats,

@@ -14,7 +14,7 @@ import { scoreLead } from './scoring/leadScore.js';
 import { enrichEmails, verifyEmails } from './enrich/emailFinder.js';
 import { verifyMissingWebsites, enrichOwners, searchReady, searchUsage, recheckLead } from './enrich/websiteFinder.js';
 import { createScheduler } from './scheduler.js';
-import { SpecialRequestStore, runSpecialRequest, HOME_SERVICE_CATEGORIES, REGIONS } from './specialRequests.js';
+import { SpecialRequestStore, runSpecialRequest, HOME_SERVICE_CATEGORIES, AGENCY_CATEGORIES, REGIONS } from './specialRequests.js';
 import { CustomerStore } from './customers.js';
 import { buildSiteHtml, fetchHeroDataUri } from './siteTemplate.js';
 import { deploySite, netlifyReady } from './netlify.js';
@@ -491,11 +491,16 @@ export function startServer() {
   });
 
   // ── Special Requests: bespoke, criteria-driven lead pulls (own tab) ────────
-  app.get('/api/special-requests', (_req, res) => {
+  app.get('/api/special-requests', (req, res) => {
+    // Each tab passes ?kind= to see only its own lists ('special' vs 'agency').
+    const kind = req.query.kind === 'agency' ? 'agency' : req.query.kind === 'special' ? 'special' : null;
+    const all = srStore.list();
+    const requests = kind ? all.filter((r) => (r.kind || 'special') === kind) : all;
     res.json({
-      requests: srStore.list(),
+      requests,
       homeServiceCategories: HOME_SERVICE_CATEGORIES,
-      // Named multi-metro coverage presets (e.g. Midwest) for the new-request form.
+      agencyCategories: AGENCY_CATEGORIES,
+      // Named multi-metro coverage presets (Midwest, USA) for the new-request form.
       regions: Object.values(REGIONS).map((r) => ({ key: r.key, label: r.label, states: r.states, metroCount: r.metros.length })),
       live: isLive(),
       // Which enrichment sources are connected, so the tab can show status

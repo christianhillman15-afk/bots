@@ -61,12 +61,51 @@ export const MIDWEST_METROS = [
   { city: 'Rapid City', state: 'SD', lat: 44.0805, lng: -103.231 },
 ];
 
+// Nationwide coverage — the major US metros where agencies concentrate. Used by
+// the "USA" region (e.g. the Agencies tab). ~28 metros spanning every region.
+export const USA_METROS = [
+  { city: 'New York', state: 'NY', lat: 40.7128, lng: -74.006 },
+  { city: 'Los Angeles', state: 'CA', lat: 34.0522, lng: -118.2437 },
+  { city: 'Chicago', state: 'IL', lat: 41.8781, lng: -87.6298 },
+  { city: 'San Francisco', state: 'CA', lat: 37.7749, lng: -122.4194 },
+  { city: 'Dallas', state: 'TX', lat: 32.7767, lng: -96.797 },
+  { city: 'Houston', state: 'TX', lat: 29.7604, lng: -95.3698 },
+  { city: 'Atlanta', state: 'GA', lat: 33.749, lng: -84.388 },
+  { city: 'Boston', state: 'MA', lat: 42.3601, lng: -71.0589 },
+  { city: 'Miami', state: 'FL', lat: 25.7617, lng: -80.1918 },
+  { city: 'Seattle', state: 'WA', lat: 47.6062, lng: -122.3321 },
+  { city: 'Washington', state: 'DC', lat: 38.9072, lng: -77.0369 },
+  { city: 'Denver', state: 'CO', lat: 39.7392, lng: -104.9903 },
+  { city: 'Austin', state: 'TX', lat: 30.2672, lng: -97.7431 },
+  { city: 'Phoenix', state: 'AZ', lat: 33.4484, lng: -112.074 },
+  { city: 'Philadelphia', state: 'PA', lat: 39.9526, lng: -75.1652 },
+  { city: 'San Diego', state: 'CA', lat: 32.7157, lng: -117.1611 },
+  { city: 'Minneapolis', state: 'MN', lat: 44.9778, lng: -93.265 },
+  { city: 'Detroit', state: 'MI', lat: 42.3314, lng: -83.0458 },
+  { city: 'Charlotte', state: 'NC', lat: 35.2271, lng: -80.8431 },
+  { city: 'Nashville', state: 'TN', lat: 36.1627, lng: -86.7816 },
+  { city: 'Portland', state: 'OR', lat: 45.5152, lng: -122.6784 },
+  { city: 'Las Vegas', state: 'NV', lat: 36.1699, lng: -115.1398 },
+  { city: 'Tampa', state: 'FL', lat: 27.9506, lng: -82.4572 },
+  { city: 'Orlando', state: 'FL', lat: 28.5383, lng: -81.3792 },
+  { city: 'St. Louis', state: 'MO', lat: 38.627, lng: -90.1994 },
+  { city: 'Columbus', state: 'OH', lat: 39.9612, lng: -82.9988 },
+  { city: 'Indianapolis', state: 'IN', lat: 39.7684, lng: -86.1581 },
+  { city: 'Salt Lake City', state: 'UT', lat: 40.7608, lng: -111.891 },
+];
+
 export const REGIONS = {
   midwest: {
     key: 'midwest',
     label: 'Midwest US (12 states)',
     states: ['IL', 'IN', 'MI', 'OH', 'WI', 'MN', 'IA', 'MO', 'KS', 'NE', 'ND', 'SD'],
     metros: MIDWEST_METROS,
+  },
+  usa: {
+    key: 'usa',
+    label: 'USA (28 major metros)',
+    states: ['NationWide'],
+    metros: USA_METROS,
   },
 };
 
@@ -84,11 +123,36 @@ export function estimateRevenue(business) {
   return Math.round(ticket * reviews * REVENUE_PER_REVIEW);
 }
 
-/** The seeded first request: Christian's Midwest home-services pull. */
+/** The seeded requests: the Midwest home-services pull (Special Requests tab)
+ * and the USA media-buying agency pull (Agencies tab). `kind` routes each to
+ * its tab: 'special' (default) vs 'agency'. */
 function seedRequests() {
   return [
     {
+      id: 'sr-agencies-media-buying-usa',
+      kind: 'agency',
+      title: 'Advertising Agency Owners — Media Buying (USA)',
+      description:
+        'Advertising & media-buying agency owners across the USA (28 major metros). Owner name, agency address, direct phone, email & website. No revenue filter — every size, sort by fit yourself.',
+      criteria: {
+        location: { label: REGIONS.usa.label },
+        region: 'usa',
+        metros: REGIONS.usa.metros,
+        categories: ['media-buying', 'advertising-agency'],
+        revenueMin: 0,
+        revenueMax: 0, // no band — pull all sizes
+        targetCount: 500,
+        fields: ['company', 'owner', 'phone', 'email', 'address', 'website'],
+      },
+      status: 'new',
+      createdAt: new Date().toISOString(),
+      progress: null,
+      runStats: null,
+      leads: [],
+    },
+    {
       id: 'sr-midwest-home-services',
+      kind: 'special',
       title: 'Home-Services Leads — Midwest US',
       description:
         'Plumbing, HVAC, roofing & remodeling companies estimated at $2–10M/yr across the entire Midwest — all 12 states (IL, IN, MI, OH, WI, MN, IA, MO, KS, NE, ND, SD).',
@@ -150,6 +214,7 @@ export class SpecialRequestStore {
   list() {
     return this.requests.map((r) => ({
       id: r.id,
+      kind: r.kind || 'special',
       title: r.title,
       description: r.description,
       criteria: r.criteria,
@@ -165,13 +230,14 @@ export class SpecialRequestStore {
     return this.requests.find((r) => r.id === id) || null;
   }
 
-  create({ title, description, location, region, metros, categories, revenueMin, revenueMax, targetCount, fields }) {
+  create({ title, description, kind, location, region, metros, categories, revenueMin, revenueMax, targetCount, fields }) {
     const id = 'sr-' + Math.random().toString(36).slice(2, 9); // eslint-disable-line -- id only, not crypto
-    // A named region preset (e.g. "midwest") expands into its metro list.
+    // A named region preset (e.g. "midwest", "usa") expands into its metro list.
     const preset = region && REGIONS[region];
     const metroList = Array.isArray(metros) && metros.length ? metros : preset ? preset.metros : null;
     const req = {
       id,
+      kind: kind === 'agency' ? 'agency' : 'special',
       title: title || 'Untitled request',
       description: description || '',
       criteria: {
@@ -443,3 +509,7 @@ export async function runSpecialRequest({ srStore, request, onProgress = () => {
 export const HOME_SERVICE_CATEGORIES = CATEGORIES.filter((c) =>
   ['plumbing', 'hvac', 'roofing', 'remodeling', 'electrical', 'concrete', 'painting', 'landscaping', 'fencing', 'garage-door', 'siding', 'windows', 'gutters', 'flooring', 'water-restoration'].includes(c.key)
 ).map((c) => ({ key: c.key, label: c.label }));
+
+/** Agency-vertical categories for the Agencies tab's new-list form. */
+export const AGENCY_CATEGORIES = CATEGORIES.filter((c) => c.vertical === 'agency')
+  .map((c) => ({ key: c.key, label: c.label }));
